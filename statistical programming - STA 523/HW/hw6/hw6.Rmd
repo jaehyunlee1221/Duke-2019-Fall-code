@@ -1,0 +1,176 @@
+---
+title: "Homework 6"
+author: 'byte_me[Linlin Li, Ziang Wang, Zewen Zhang, Jae Hyun Lee]'
+date: "11/05/2019"
+output: 
+  html_document:
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+                      warning = FALSE)
+```
+
+```{r packages}
+library(rvest)
+library(tidyverse)
+library(tidyr)
+library(data.table)
+library(parallel)
+#install.packages("doMC", repos = "http://R-Forge.R-project.org")
+```
+
+## Task 1
+
+##### Capital Bikeshare data
+In order to get the hyperlinks for all the bike data we want, we watched the pattern of the hyperlinks, found out its just the same basic url followed by different year. Then we initiated an empty list for data, read the hyperlinks and parallelized computations using a cluster. "Bike" contains all data from 2013-2017.
+
+We assumed that the data of 2017 would be helpful to our prediction, since bike data of 2013~2016 does not have the same number of stations as the bike data in 2018, and we could find that station number was increasing by year. Thus, we only took and saved the data of 2017 in "cbs2017.Rds”. We also used vroom function to get the test data for the model in the same way and saved the test data in "test.Rds”, so we can read both Rds files in this Rmd file for our further analysis.
+
+```{r load bike data}
+# Load the bike data
+bike <- readRDS("cbs2017.rds")
+```
+
+##### Dark Sky data
+
+Since we have assumed that the data of 2017 would be helpful to the prediction, we only get the Dark sky data ranging from 01/01/2017 to 12/31/2017 for model analysis. Then we scrape the data of 2018 to test the model. We first registered and get the key to have the access to the Darksky API. To make API requests, we not only need the base url with API key, but also the information of latitude, longitude and time. 
+
+We set the latitude and longitude to be the location of Washington D.C. Then we set the time as the format "YYYY-MM-DDTHH:MM:SS", as suggested by the documentation of Dark sky website. We set our starting date as "01/01/2017". We use a loop to replace the place of time in the url by the exact date format we set up, and then use "read json" to save data information of all days into the list "weather data". Finally, we combine the weather information of all days, taking "data" from "daily", by using bind_rows to make it as a data frame. We change the data type of "time" to the date format for further model analysis. We then save the data as "darksky_data". 
+
+```{r load darksky data}
+# load the darksky data
+weather <- readRDS("darksky.rds")
+weather2 <- readRDS("darksky2.rds")
+```
+
+## Task 2
+
+### Pre-process the data
+
+For the test data, we first divide `Duration` into several intervals with length 100 and divide `start_date` in to `year`, `month`, and `day` to prepare matching with weather data. We then add weather variables to the test data. To achieve this, we need to figure out the overall summary of weather in each day in 2018, we divide `time` into `year`, `month` and `day`. After that, we add `icon`, `year`, `month` and `day` from weather data in 2018 to the bike test data.
+
+Recalling that we assumed that the data of 2017 would be helpful to our prediction, since bike data of 2013~2016 does not have the same number of stations as the bike data in 2018, and we could find that station number was increasing by year. 
+
+For the training data, we first divide `Duration` into several intervals with length 100 and divide `start_date` in to `year`, `month`, and `day` to prepare matching with weather data. We then add weather variables to the training data. To achieve this, we need to figure out the overall summary of weather in each day in 2017, we divide `time` into `year`, `month` and `day`. After that, we add `icon`, `year`, `month` and `day` from weather data in 2017 to the bike training data.  
+
+```{r load test data}
+# load the test data
+test <- readRDS("test.rds")
+```
+
+```{r parse the training data and test data, cache=TRUE}
+## test set
+# Parse test data
+test_2018 <- test %>% 
+  mutate(duration = cut(duration, breaks = seq(0,max(bike$Duration),100))) %>% 
+  separate(col = start_date, into = paste("Start",c("year","month","day"), sep = "_")) %>% 
+  as.data.table()
+
+# Parse weather data in 2018 for the test data
+weather2 <- weather2 %>% 
+  dplyr::select(time, icon) %>% 
+  separate(col = time, into = c("year","month","day"))
+
+# Add weather variables in the bike test data
+full_test <- left_join(test_2018, weather2, by = c("Start_year" = "year","Start_month" = "month","Start_day" = "day")) 
+
+## training set
+# Parse training data
+cbs_2017 <- bike %>% 
+  dplyr::select(Duration, `Start date`, `Start station`, `End station`, `Member type`) %>% 
+  separate(col = `Start date`, into = paste("Start",c("year","month","day"), sep = "_")) %>% 
+  mutate(Duration = cut(Duration, breaks = seq(0,max(Duration),100)))
+
+# Parse weather data in 2017 for the test data
+weather <- weather %>% 
+  dplyr::select(time, icon) %>% 
+  separate(col = time, into = c("year","month","day"))
+  
+# Add weather variables in the bike training data
+full_train <- left_join(cbs_2017, weather, by = c("Start_year" = "year","Start_month" = "month","Start_day" = "day"))
+```
+
+### Build a predictive model
+
+We build a predictive model to predict the end station for each record in the test data. We believe that `duration`, `start_station`, and `icon` variables are important for predicting the end station for bike rides. We use the sample average of the `End station` of those records in training data that have the same `duration`, `start_station`, and `icon` as the record in the test data, to approximate the probability of returning the bike to these end stations. In particular, if the end station is not included in those records in the training data, it will result in an `NA` in the test data. And then we replace `NA` with 0, indicating that we predict that there is no probability for this ride to return to this end station. 
+
+To run the `pred` function in a more efficient way, we first extract the unique end stations from the test data and store it in `station`. Then we extract the `duration`, `start_station`, as well as `icon` variables for each record and save them into a list, in order to use `parapply` function later. Then we run the `pred` function using parallelization with 4 cores. After some trials, we found that dividing the training data based on `month` can help improve the efficiency of our codes, resulting in a list with 12 elements, which contains records within that month. Then we run the `pred` function for the whole test data and obtain the predictive probability for each end station. 
+
+Finally, we reorganize the results and convert it into a data frame `final`. 
+
+```{r build model, cache=TRUE, warning=FALSE}
+# Predictive model for new data
+pred <- function(data, bike, station)
+{
+  ## input predictors: start_station, duration, icon 
+  ## output: probability of returning to each end_station
+  
+  end_station <- function(mydata,start,duration,icon)
+  {
+    library(dplyr)
+    temp <- mydata %>% 
+      filter(`Start station` == start & Duration == duration & icon == icon) %>%
+      group_by(`End station`) %>% 
+      summarise(count = n())
+  return(temp)
+  }
+  
+  # run end_station function for the all records
+  temp <- lapply(bike, end_station, data$start_station, data$duration, data$icon)
+  
+  # compute sample frequency of each end_station in training set and use it to predict the probability of returning to this end_station
+  temp2 <- bind_rows(temp) %>% 
+    group_by(`End station`) %>% 
+    summarise_all(sum) %>%
+    mutate(count = count/sum(count))
+  
+  # paste the above result based on the end_station, if the end_station is not included, it will result in NA 
+  temp3 <- left_join(station, temp2, by = c("station" = "End station")) %>% 
+    arrange(station)
+  # replace NA with 0
+  temp3[is.na(temp3$count),2] <- 0
+  
+  # modify the format of result
+  temp4 <- t(temp3)
+  colnames(temp4) <- temp4[1,]
+  temp5 <- temp4[2,,drop = F]
+  return(temp5)
+}
+
+# Obtain unique end stations
+station <- data.frame(station = colnames(test)[8:495], stringsAsFactors = F)
+
+# Divide the training data based on month
+month <- formatC(1:12, width = 2, flag = "0")
+full_train_by_month <- lapply(month, function(x){full_train %>% filter(Start_month == x)})
+
+# Extract predictor variables and save into a list
+full_test_predictor <- full_test[,c(5,7,498)]
+full_test_predictor <- lapply(split(full_test_predictor, seq(nrow(full_test_predictor))),as.list)
+
+# run the pred function using parallelization
+cores <- detectCores()
+data.clust <- makeCluster(cores)
+result <- rep(list(0),length(full_test_predictor))
+system.time(result <- parLapply(data.clust, full_test_predictor, pred, bike = full_train_by_month, station = station))
+stopCluster(data.clust)
+```
+
+```{r organize the result}
+# reorganize the results
+result2 <- round(t(bind_rows(lapply(result,as.numeric))), digit = 8) 
+colnames(result2) <- station$station
+final <- cbind(test[,1:7],result2)
+final$start_date <- format(final$start_date,"%Y-%m-%dT%H:%M:%SZ") 
+final$end_date <- format(final$end_date,"%Y-%m-%dT%H:%M:%SZ")
+write.csv(final, "cbs_byte-me.csv", row.names = F)
+```
+
+### Analysis of final model
+
+we have built our final model based on belief that `Duration` might be main factor to determine `end station`, because `Duration` might be have strong positive relationship with distance between `start station` and `end station`. For instance, even the fastest bicycle rider can go only limited distance in fixed time. We could also use distance data from bike station scrapped from the website, but it showed that some geological information of  stations were not exist. To collaborate with weather factors, we included only icon because if we use other varaibles, they divided sample train data excessively and caused overfitting problem. Thus we chose our final model to include only `Duration` and `icon` for predictor variables.
+
+### Limitation
+Our final model is not actual statistical model, but is sample distribution of `end station` conditioned on `start station` and `Duration`. To overcome this limitation, we have tried to fit multinomial regression or probit ordered regression. But those methods have shown much worse performance than our previous model.

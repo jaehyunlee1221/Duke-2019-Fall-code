@@ -1,0 +1,409 @@
+---
+title: 'STA 601/360 Homework6'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+library(foreign)
+library(truncnorm)
+require(magrittr)
+require(plyr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW6 for STA-601
+
+## Exercise 1
+
+For possion model used at Exercise 4.8, we will parameterize $\theta_A$ and $\theta_B$ as $\theta_A = \theta$, $\theta_B = \theta \gamma$. In this parameterization, $\gamma$ represent the relative rate. 
+Let $\theta \sim gamma(a_\gamma, b_\gamma)$ and $\gamma \sim gamma(a_\gamma,b_\gamma)$
+
+#### a)
+are $\theta_A$ and $\theta_B$ independent or dependent under this prior distribution? In what situations is such a joint prior distribution justified?
+
+$$
+P(\theta_B \mid \theta, \gamma) = P(\theta_B \mid \theta_A, \gamma) \quad for \; \theta = \theta_A \\
+P(\theta_B \mid \theta_A, \gamma) \ne P(\theta_B \mid \gamma) = \int P(\theta_B \mid \theta,\gamma)d\theta
+$$
+Thus we can conclude that $\theta_B$ and $\theta_A$ are dependent.
+
+#### b)
+
+obtain the form of the full conditional distribution of $\theta given y_A,y_B,\gamma$
+
+$$
+\begin{aligned}
+P(y_A \mid \theta_A) = \theta_A^{n_A \bar{y_A}} exp\{-n_A\theta_A \} \\
+P(y_B \mid \theta_B) = \theta_B^{n_B \bar{y_B}} exp\{-n_B\theta_B \} \\
+\end{aligned}
+$$
+after reparamaterization,
+
+$$
+\begin{aligned}
+P(y_A \mid \theta, \gamma) = \theta^{n_A \bar{y_A}} exp\{-n_A\theta \} \\
+P(y_B \mid \theta, \gamma) = \theta^{n_B \bar{y_B}} \gamma^{n_B \bar{y_B}} exp\{-n_B \theta \gamma\}
+\end{aligned}
+$$
+Then assuming that two samples are independent given $\theta$ and $\gamma$, their conditional joint pdf are 
+$$
+\begin{aligned}
+P(y_A,y_B \mid \theta, \gamma) = \theta^{n_A\bar{y_A}+n_B\bar{y_B}} exp\{-n_A\theta - n_B\theta\gamma\}
+\end{aligned}
+$$
+Full conditional distribution for $\theta$ is 
+$$
+\begin{aligned}
+P(\theta \mid y_A, y_B, \gamma) \propto P(\theta \mid \gamma)P(y_A,y_B \mid \theta, \gamma) &= P(\theta)P(y_A,y_B \mid \theta, \gamma) \\
+&= \theta^{n_A\bar{y_A} + n_B\bar{n_B} + a_\theta - 1} exp\{-n_A\theta -n_B\theta\gamma - b_\theta \theta\} \\
+&\sim gamma(n_A\bar{y_A} + n_B\bar{n_B} + a_\theta, n_A+n_B\gamma + b_\theta)
+\end{aligned}
+$$
+
+#### c)
+
+obtain the form of the full conditional distribution of $\gamma given y_A,y_B, and \theta$
+
+$$
+\begin{aligned}
+P(\gamma \mid y_A,y_B,\theta) &\propto P(\gamma \mid \theta)P(y_A,y_B \mid \theta,\gamma) \\
+&\propto \gamma^{n_B\bar{y_B} + a_\gamma -1} exp\{n_B\theta + b_\gamma\} \\
+&\sim gamma(n_B\bar{y_B} + a_\gamma, n_B\theta + b_\gamma)
+\end{aligned}
+$$
+
+#### d)
+
+```{r}
+bach <- read.delim("menchild30bach.dat",sep = " ")
+Y_A <- bach %>%
+  unlist %>%
+  na.omit
+nobach <- read.delim("menchild30nobach.dat",sep = " ")
+Y_B <- nobach %>% 
+  unlist %>%
+  na.omit
+print(c(length(Y_A),sum(Y_A)))
+print(c(length(Y_B),sum(Y_B)))
+```
+
+```{r}
+set.seed(1000)
+prior_t <- c(2,1)
+prior_g <- matrix(rep(2^(3:7),2),ncol = 2) 
+stat_A <- c(length(Y_A),sum(Y_A))
+stat_B <- c(length(Y_B),sum(Y_B))
+theta <- matrix(rep(c(1,rep(NA,10000)),5), ncol = 5)
+gamma <- matrix(rep(c(1,rep(NA,10000)),5), ncol = 5)
+
+for(j in 1:5){
+  for(i in 1:10000){
+    theta[i+1,j] <- rgamma(1, stat_A[2] + stat_B[2] + prior_t[1], 
+                       stat_A[1] + stat_B[1]*gamma[i] + prior_t[2])
+    gamma[i+1,j] <- rgamma(1, stat_B[2] + prior_g[j,1], stat_B[1]*theta[i+1] + prior_g[j,2])
+  }
+}
+
+theta_A <- theta[5001:10000,] #burn in period is 1:5000
+theta_B <- (theta * gamma)[5001:10000,] #burn in period is 1:5000
+
+apply(theta_B - theta_A, 2, mean)
+```
+
+As prior parameter for $\gamma$ increases from 8 to 128, the average difference between $\theta_B - \theta_A$ decreases. We have set that $\gamma = \theta_B/\theta_A$ and prior parameter $a_\gamma = b_\gamma$ so that mean for $\gamma = a_\gamma / b_\gamma = 1$. That is the prior information which support that the relative of $\theta_B$ and $\theta_A$ gets stronger. As a result, the average difference of $\theta_B$ and $\theta_A$ becomes smaller because the prior information that support $\theta_B = \theta_A$ becomes stronger.
+
+## Exercise 2
+
+$Z_i = \beta x_i + \epsilon_i$ and $Y_i = \delta_{(c,\infty)}(Z_i)$ where $\beta$ and c are unknown coefficient, $\epsilon_1 \cdot\cdot\cdot \epsilon_n$ ~ iid normal(0,1) and $\delta_{(c,\infty)} = 1$ if z > c
+
+#### a)
+obtain the full conditional distribution for $\beta$.
+
+From given information about Z, Y, $\beta$ and c, we can know that 
+
+$$
+\begin{aligned}
+&P(Z_i \mid \beta, x_i) \sim  \; N(\beta x_i, 1) \\
+\rightarrow &P(\mathbf{z} \mid \beta, \mathbf{x}) = P(Z_1 \cdot\cdot\cdot Z_n \mid \beta\mathbf{x}) = (2\pi)^{-n/2}exp\{\frac{\sum_{i=1}^{n}(Z_i - \beta x_i)^2}{2}\}
+\end{aligned}
+$$
+$$
+\begin{aligned}
+P(Y_i \mid Z_i,c) = 1 \quad if \; Z_i >c \\
+P(Y_i \mid Z_i,c) = 0 \quad if \; Z_i <c 
+\end{aligned}
+$$
+Obviously, we can know that 
+
+$$
+P(\beta \mid \mathbf{y,x,z},c) \propto P(\mathbf{y} \mid \beta, \mathbf{x,z},c) P(\mathbf{z} \mid \beta, \mathbf{x}, c)P(\beta \mid \mathbf{x},c)
+$$
+Since, y does not directly depend on $\beta$ and $\mathbf{x}$ and does indirectly depend through $\mathbf{z}$, we can conclude that $P(\mathbf{y} \mid \beta, \mathbf{x,z},c)$ = $P(\mathbf{y} \mid \mathbf{z},c)$. In addition, $P(\beta \mid \mathbf{x},c) = P(\beta)$ because of assumed independence between prior.
+$$
+\begin{aligned}
+P(\beta \mid \mathbf{x,y,z},c) &\propto P(\mathbf{y} \mid \beta, \mathbf{x,z},c) P(\mathbf{z} \mid \beta, \mathbf{x}, c)P(\beta \mid \mathbf{x},c) \\
+&\propto P(\mathbf{z} \mid \mathbf{x},\beta,c)P(\beta) \\
+&\propto exp\{-\frac{1}{2}[\sum_{i=1}^n x_i^2 \beta^2 -2\beta\sum_{i=1}^n x_iz_i]\}exp\{-\frac{\beta^2}{2\tau_\beta^2}\} \\
+&= exp\{-\frac{\beta^2}{2}[\frac{1}{\tau_\beta^2} + \sum_{i=1}^n x_i ^2] + \beta \sum_{i=1}^n x_iz_i\} \quad which \; is \; kernal \; of \; normal \;distribution \\
+&\sim N(\tau_{\beta_n}^2 \sum_{i=1}^{n} x_iz_i, \tau_{\beta_n}^2) \quad where \quad \tau_{\beta_n}^2 = [\frac{1}{\tau_\beta^2} + \sum_{i=1}^n x_i^2]^{-1}
+\end{aligned}
+$$
+
+Thus full conditional distribution for $\beta$, $P(\beta \mid \mathbf{y,x,z},c)$ is pdf of $N(\tau_{\beta_n}^2 \sum_{i=1}^{n} x_i, \tau_{\beta_n}^2) \quad where \quad \tau_{\beta_n}^2 = [\frac{1}{\tau_\beta^2} + \sum_{i=1}^n x_i^2]^{-1}$
+
+#### b)
+
+show that full conditional distribution of c is constrained normal density. Similarly show that full conditional distribution of $z_i$ is proportional to a normal density but constrained to be either above c or below c depending on $y_i$
+
+First, we have to obtain full conditional distribution of c
+
+$$
+\begin{aligned}
+P(c \mid \mathbf{x,y,z}, \beta) \propto P(\mathbf{y} \mid \mathbf{x,z},\beta,c) P(c \mid \mathbf{x,z}, \beta)
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+P(y_i = 0 \mid x_i, z_i, c, \beta) = P(z_i < c \mid x_i,\beta,c) \\
+P(y_i = 1 \mid x_i, z_i, c, \beta) = P(z_i > c \mid x_i,\beta,c) \\
+\end{aligned}
+$$
+Let k be $\sum y_i$ where $0 \le k \le n$ and since $z_i$ are conditionally independent given $x_i,\beta$, by de Finetti's theorem, $z_i$ are exchangable. Thus even if we change the order of $z_i$, their joint pdf is same as before. Let we arrange $z_i$ so that $z_i \le z_j$ for $i > j$. Then joint pdf of $y_i$ is 
+$$
+\begin{aligned}
+P(\mathbf{y} \mid \mathbf{x,z}, \beta,c) = P(z_1 \cdot\cdot\cdot z_k >c, z_{k+1} \cdot\cdot\cdot z_n <c \mid \mathbf{x},c,\beta)
+\end{aligned}
+$$
+Moreover, we know that $z_k$ is min value of $z_i$ which satisfy $y_i = 1$, whereas $z_{k+1}$ is max value of $z_j$ which satisfy $y_j = 0$. Now we also know that $P(c \mid \mathbf{x,z},\beta) = P(c)$ because the likelihood function of $z_i$ does not depend on c. Thus
+
+$$
+\begin{aligned}
+p(c \mid \mathbf{y,x,z}, \beta) &\propto P(\mathbf{y} \mid \mathbf{x,z},c,\beta)P(c \mid \mathbf{x,z}, \beta) \\
+&= P(z_n \cdot\cdot\cdot z_{k+1}< c < z_k \cdot\cdot\cdot z_1 \mid \mathbf{x},\beta,c)P(c) \\
+&= P(z_{k+1} <c<z_k \mid \mathbf{x},\beta,c)P(c)
+\end{aligned}
+$$
+Since, $z_i$ are normal distribtion for mean $\beta x_i$ with variance 1, we can rewrite $P(z_{k+1} <c<z_k \mid \mathbf{x},\beta,c)$ as $\Phi(z_k - x_k\beta) - \Phi(z_{k+1} - x_k\beta)$ where $\Phi$ is CDF of standard normal distribution.
+
+
+As a result, the full conditional distribution for c are constrained normal between $z_{k+1}$ and $z_k$
+
+Similarly, $P(z_i \mid \mathbf{x,y,z_{-i}}, \beta, c)$ is constrained normal.
+Since, $z_i$ are conditionally independent, $P(z_i \mid \mathbf{x,y,z_{-i}},\beta,c) = P(z_i \mid \mathbf{x,y},\beta,c)$
+$$
+\begin{aligned}
+P(z_i \mid x_i, y_i = 0, \beta, c) &\propto P(y_i = 0 \mid z_i,c)P(z_i \mid \beta, x_i,c)\\
+&= P(z_i<c \mid x_i,\beta,c)P(z_i \mid \beta,x_i,c) \\
+&= \Phi(c - \beta x_i)P(z_i \mid \beta, x_i,c)
+\end{aligned}
+$$
+As above equation, when $y_i = 0$, the distribution of $P(z_i \mid y_i, \beta, c, x_i) \sim trancate \; Normal (\beta x_i,1,- \infty,c)$ is constrained normal distribution which can have constrained range from $-\infty$ to c.
+Whereas, when $y_i=0$, the distribution of $P(z_i \mid y_i, \beta, c, x_i) \sim trancate Normal \; (\beta x_i,1,c,\infty)$ is constrained normal distribution which can have constrained range from c to $\infty$.
+The full conditional distribution of $z_i$ can be thought as pdf that have 
+
+$$
+\begin{aligned}
+P(z_i \mid \mathbf{x,y},c,\beta) \sim trancate Normal (\beta x_i,1,- \infty,c) \quad when \; y_i = 0 \\
+P(z_i \mid \mathbf{x,y},c,\beta) \sim trancate Normal (\beta x_i,1,c,\infty) \quad when \; y_i = 1
+\end{aligned}
+$$
+
+```{r}
+divorce <- read.delim("divorce.dat",sep = " ")
+for(i in 1:nrow(divorce)){
+  if(is.na(divorce$X2[i])) divorce$X2[i] <- divorce$X[i]
+  if(is.na(divorce$X0[i])) divorce$X0[i] <- divorce$X.1[i]
+}
+divorce <- divorce[,c(2,4)]
+colnames(divorce) <- c("x", "y")
+```
+
+```{r}
+set.seed(1000)
+data <- list(x = divorce$x, 
+             y = divorce$y)
+prior <- list(mb = 0, mc = 0, sdb = 4, sdc= 4)
+
+gibbs <- function(size, data, prior){
+  
+  beta <- rep(NA,size); beta[1] <- 1
+  c <- rep(NA,size); c[1] <- 1
+  z <- matrix(rep(NA,size*length(data$x)),ncol = length(data$x)); 
+  index1 <- data$y == 0
+  index2 <- data$y == 1
+  z[1, index1] <- rtruncnorm(sum(index1), b = c[1], mean = beta[1]*data$x[index1], sd = 1)
+  z[1, index2] <- rtruncnorm(sum(index2), a = c[1], mean = beta[1]*data$x[index2], sd = 1)
+  
+  for (i in 1:(size-1)){
+    #update beta
+    sdb_n <- ((1/prior$sdb)^2 + sum(data$x^2))^(-1/2)
+    mb_n <- (sdb_n^2)*(sum(data$x*z[i,]))
+    beta[i+1] <- rnorm(1, mean = mb_n, sd = sdb_n)
+    
+    #update c
+    z.0 <- max(z[i,data$y == 0])
+    z.1 <- min(z[i,data$y == 1])
+    c[i+1] <- rtruncnorm(1, a = z.0, b = z.1, mean = prior$mc, sd = prior$sdc)
+    
+    #update z
+    
+    z[i+1,index1] <- rtruncnorm(sum(index1), b = c[i+1], mean = beta[i+1]*data$x[index1], sd = 1)
+    z[i+1,index2] <- rtruncnorm(sum(index2), a = c[i+1], mean = beta[i+1]*data$x[index2], sd = 1)
+  }
+  result <- list(beta = beta, c = c, z = z)
+  return(result)
+}
+sample <- gibbs(50000, data = data, prior = prior)
+```
+
+```{r}
+library(coda)
+map(sample, effectiveSize)
+```
+
+```{r acf for beta}
+acf(sample$beta)
+```
+Autocorrelation between lags in beta b is very high.
+
+```{r}
+acf(sample$c)
+```
+Autocorrelation between lags in c is also very high.
+
+```{r some acf for z}
+par(mfrow = c(1,2))
+acf(sample$z[,1]) # y == 0
+acf(sample$z[,23]) # y == 1
+```
+
+The mixing speed of the Markov chains for $c$ is so slow that effective sample size is only 2135 for 50000 sample size. In addition, even though mixing speed of $\beta$ is faster than the speed of c, it is still too slow. As a result, it shows 2845 effective sample size for 50000 sample. On the other hand, in $z_i$ cases, some $z_i$ shows fast mixing speed. However, other $z_i$ are show high autocorrelation and slow mixing speed.
+
+#### d)
+obtain 95% posterior confidence interval for $\beta$, as well as $P(\beta>0 \mid \mathbf{y,x})$
+```{r}
+quantile(sample$beta, c(0.025,0.975))
+```
+
+```{r}
+mean(sample$beta>0)
+```
+
+## Exercise 3
+
+#### a)
+
+obtain posterior samples of $\theta$ and $\Sigma$. Using sample mean and variance as prior.
+
+```{r}
+blue <- read.table("bluecrab.dat",col.names = c("y1","y2"))
+orange <- read.table("orangecrab.dat", col.names = c("y1","y2"))
+```
+
+```{r}
+ybar.1 <- apply(blue, 2, mean)
+ybar.2 <- apply(orange, 2, mean)
+
+prior.1 <- list(mu0 = ybar.1,
+                lambda0 = as.matrix(t(blue-ybar.1)) %*% as.matrix(blue-ybar.1),
+                nu0 = 4,
+                S0 = as.matrix(t(blue-ybar.1)) %*% as.matrix(blue-ybar.1))
+prior.2 <- prior.1 <- list(mu0 = ybar.2,
+                lambda0 = as.matrix(t(orange-ybar.2)) %*% as.matrix(orange-ybar.2),
+                nu0 = 4,
+                S0 = as.matrix(t(orange-ybar.2)) %*% as.matrix(orange-ybar.2))
+```
+
+```{r}
+gibbs_crab <- function(size, prior, data){
+  #prior setup
+  n <- nrow(data); p <- ncol(data)
+  ybar <- apply(data, 2, mean)
+  mu0 <- prior$mu0; lambda0 <- prior$lambda0
+  nu0 <- prior$nu0; S0 <- prior$S0
+  #first obs
+  theta <- matrix(0,p,size)
+  sigma <- array(1,dim = c(p,p,size)) ; sigma[,,1] <- diag(1,p)
+  
+  for(i in 2:size){
+    #update mean
+    lambda_n <- solve(n*solve(sigma[,,i-1]) + lambda0)
+    mu_n <- lambda_n %*% (n*solve(sigma[,,i-1])%*%ybar + solve(lambda0)%*%mu0)
+    theta[,i] <- MASS::mvrnorm(1, mu = mu_n, Sigma = lambda_n)
+    
+    #update variance
+    nu_n <- prior$nu0 + n
+    Sn <- S0 + t(data - ybar) %*% as.matrix(data - ybar)
+    sigma[,,i] <- rWishart(1, nu_n, solve(Sn))
+  }
+  result <- list(theta = theta,
+                 sigma = sigma)
+  return(result)
+}
+blue.crab <- gibbs_crab(10000, prior.1, blue)
+orange.crab <- gibbs_crab(10000, prior.2, orange)
+```
+
+#### b)
+
+```{r blue crap}
+ggplot() +
+  geom_histogram(mapping = aes(x=blue.crab$theta[1,]),fill = "skyblue", col = "red") +
+  labs(title = "Histogram of blue crab depth", x = "depth")
+
+ggplot() +
+  geom_histogram(mapping = aes(x=blue.crab$theta[2,]),fill = "skyblue", col = "red") +
+  labs(title = "Histogram of blue crab width", x = "width")
+```
+
+```{r yellow crap}
+ggplot() +
+  geom_histogram(mapping = aes(x=orange.crab$theta[1,]),fill = "orange", col = "red") +
+  labs(title = "Histogram of orange crab depth", x = "depth")
+
+ggplot() +
+  geom_histogram(mapping = aes(x=orange.crab$theta[2,]),fill = "orange", col = "red") +
+  labs(title = "Histogram of orange crab width", x = "width")
+```
+
+```{r diff crab}
+diff.crab <- blue.crab$theta - orange.crab$theta
+
+apply(diff.crab,1,function(x) mean(x<0))
+
+ggplot() +
+  geom_histogram(mapping = aes(x=diff.crab[1,]),fill = "gray", col = "red") +
+  labs(title = "Histogram of difference crab depth", x = "depth")
+
+ggplot() +
+  geom_histogram(mapping = aes(x=diff.crab[2,]),fill = "gray", col = "red") +
+  labs(title = "Histogram of differnce crab width", x = "width")
+```
+
+In both measure, orange crab is larger than blue crab on average. As an evidence, the predictive probability that orange crab is larger than blue crab in both width and depth shows that 90% and 68% for each measure.
+
+#### c)
+
+```{r}
+blue.cor <- blue.crab$sigma[1,2,]
+orange.cor <- orange.crab$sigma[1,2,]
+ggplot() +
+  geom_histogram(mapping = aes(x = blue.cor), col = "blue", fill = "skyblue") +
+  labs(title = "Density of corrletion in blue.crab", x = "corrleation")
+ggplot() +
+  geom_histogram(mapping = aes(x = orange.cor), col = "red", fill = "orange") +
+  labs(title = "Density of corrletion in orange.crab", x = "corrleation")
+
+mean(blue.cor<orange.cor)
+```
+
+Density of two species' correlation between both variables are showing difference. The density of correlation in orange crab is much more concentrated on center, whereas the density of blue crab is dispersed. Moreover, as we can see the result of $P(\rho_{blue} <\rho_{orange} \mid \mathbf{y_{blue},y_{orange}})$, the correlation of two variables in orange crab is larger than blue's, although absolute value in blue crab is larger than orange crab.
+

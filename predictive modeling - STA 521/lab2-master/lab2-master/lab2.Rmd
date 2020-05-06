@@ -1,0 +1,260 @@
+---
+title: "Lab2"
+author:
+date: "September 7, 2019"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo =TRUE)
+library(dplyr)
+library(GGally)
+```
+
+## Topics
+
+
+* added variable plots `avPlots` from  `library(car)` 
+* `termplot`  Base R
+* `boxCox`   from  `library(car)`  
+* `powerTransform` from `library(car)` 
+
+
+## Interpretation with Multiple Regression: Added Variable Plots
+
+* Regression Coefficients in Multiple Regression are adjusted for other variables
+
+* use the United Nations data 'full' model 
+
+
+$$E[\log(\text{Fertility}) \mid \log(\text{PPgdp}) = x_1, \text{Purban} = x_2) = \beta_0 + \beta_1 x_1 + \beta_2 x_2$$
+
+*  Keeping `Purban` fixed, with a one unit change in `log(PPgdp)` we expect `log(Fertility)` to change by $\beta_1$
+
+* Visualize with added-variable plots
+
+## Data and Cleaning
+```{r, echo=T}
+data(UN3, package="alr3")
+UN = dplyr::select(UN3, c(Fertility, PPgdp, Purban)) %>%
+  mutate(logPPgdp = log(PPgdp),
+         logFertility = log(Fertility)) %>%
+  na.omit()
+```
+
+## Scatter plots
+
+```{r}
+ggpairs(UN, c(3,4,5))
+```
+
+
+## Adjustment for `Purban`
+
+1) Regress `log(Fertility)` on `Purban` and obtain the residuals; call them `e_Y` for example. 
+
+```{r eY, echo=T}
+e_Y = residuals(lm(logFertility ~ Purban, data=UN))
+```
+
+2) Regress `logPPgdp` on `Purban` and obtain the residuals (call `e_X1`)
+```{r, echo=T}
+e_X1 = residuals(lm(logPPgdp ~ Purban, data=UN))
+```
+
+3) regress `e_Y` on `e_X` 
+
+4) slope is the same as the estimated slope for `logPPgdp` in the full model with both predictors.
+
+## Added Variable Plot
+
+```{r, echo=T, fig.width=5, fig.height=3}
+df = data.frame(e_Y = e_Y, e_X1 = e_X1)
+ggplot(data=df, aes(x = e_X1, y = e_Y)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+
+##  Compare
+
+```{r, echo=T}
+summary(lm(logFertility ~ logPPgdp + Purban, data=UN))$coef
+
+summary(lm(e_Y ~ e_X1, data=df))$coef
+```
+
+* coefficients are the same
+
+* residuals are the same
+
+* t-values not quite (why?)
+
+## In General `avPlots`
+
+```{r, echo=T}
+car::avPlots(lm(logFertility ~ logPPgdp + Purban, data=UN))
+```
+
+
+
+
+
+
+
+## Added Variable Plot Example & Transformations
+
+```{r simdata, echo=T}
+n = 100
+logx1 = rnorm(n)
+x1 = exp(logx1)
+x2 = abs(rnorm(n))
+logy = .5 + 3*logx1 - 2*sqrt(x2) + rnorm(n)
+simdat = data.frame(X1=x1, X2 = x2, Y=exp(logy))
+```
+
+
+
+
+```{r}
+library(car)
+mod1 = lm(Y ~ X1 + X2, data=simdat)
+avPlots(mod1)
+termplot(mod1,partial.resid = T)
+```
+
+In the added variable plot,
+(like termplot below) this can also show if the linear term in $X1$ is appropriate or perhaps there is a nonlinear relationship or if there are outliers or influential points that affect the adjusted relationship. 
+
+
+
+## Transformations
+
+```{r}
+data("Prestige")
+```
+
+```{r}
+pairs(Prestige)
+```
+
+
+###  BoxCox
+
+```{r}
+car::boxCox(lm(prestige ~ income + education + type + poly(women, 2), data=Prestige))
+```
+
+see `help(boxCox)` for generalizations for non-positive responses
+
+### PowerTransform
+
+```{r}
+car::powerTransform(Prestige[, 1:5], family="bcnPower")  
+#omit type last column as it is discrete
+# allow non-positive values
+# 
+# see help(powerTransform) for examples and testing for "nice" powers
+```
+
+
+## Termplot output - specific predictor vs partial residual(not explained by other predictor terms)
+```{r}
+termplot(lm(Y ~ X1 + X2, data=simdat), terms = "X1",
+         partial.resid = T, se=T, rug=T,
+         smooth = panel.smooth)
+
+```
+
+## Termplot output
+```{r}
+termplot(lm(Y ~ X1 + X2, data=simdat), terms = "X2",
+         partial.resid = T, se=T, rug=T, 
+         smooth = panel.smooth)
+```
+
+
+##  termplot with transformation of Y and X1
+
+```{r}
+termplot(lm(log(Y) ~ log(X1) + X2, data=simdat),
+         terms = "log(X1)", partial.resid = T, se=T, rug=T, 
+         smooth = panel.smooth)
+```
+
+##  termplot with transformation of Y and X1
+
+```{r}
+termplot(lm(log(Y) ~ log(X1) + X2, data=simdat), terms = "X2",
+         partial.resid = T, se=T, rug=T, smooth = panel.smooth)
+
+```
+
+##  termplot with transformation of Y, X1, and X2
+
+```{r}
+termplot(lm(log(Y) ~ log(X1) + sqrt(X2), data=simdat), terms = "sqrt(X2)",
+         partial.resid = T, se=T, rug=T, smooth = panel.smooth)
+```
+
+## What is in a term plot?
+
+*  x-axis is the (untransformed) variable in your dataframe  $(X1, X2)$
+* line is the "term" of that variable's contribution to $f(x)$ 
+* y-axis is partial residuals for term
+* `partial.resid = T` adds the partial residuals to the plot
+* `rug = T`  shows location of data on axes
+* `se = T`  adds the SE of the term's contribution to $f(x)$
+* `smooth = panel.smooth`  adds "smoothed" means to plot
+
+##  Terms
+
+$$Y = \hat{\beta}_0 + \hat{\beta}_1 X1 + \hat{\beta}_2 X2 + e$$
+Equivalent to centered model
+
+$$Y = \bar{Y} + \hat{\beta}_1 (X1 - \bar{X1}) + \hat{\beta}_2 (X2 - \bar{X2}) + e$$
+Terms are coefficient estimates times centered predictors
+ $$\hat{\beta}_1 (X1 - \bar{X1}) $$
+ $$\hat{\beta}_2 (X2 - \bar{X2}) $$
+
+##  Terms with transformations
+
+$$\log(Y) = \hat{\beta}_0 + \hat{\beta}_1 \log(X1) + \hat{\beta}_2 X2 + e$$
+Equivalent to centered model
+
+$$\log(Y) = \bar{\log(Y)} + \hat{\beta}_1 (\log(X1) - \bar{\log(X1)}) + \hat{\beta}_2 (X2 - \bar{X2}) + e$$
+Terms are coefficient estimates times centered "predictors"
+ $$\hat{\beta}_1 (\log(X1) - \bar{\log(X1)}) $$
+
+## partial residuals for a term
+
+$$\log(Y) = \bar{\log(Y)} + \hat{\beta}_1 (\log(X1) - \bar{\log(X1)}) + \hat{\beta}_2 (X2 - \bar{X2}) + e$$
+
+$$\log(Y) - (\bar{\log(Y)} + \hat{\beta}_1 (\log(X1) - \bar{\log(X1)})) =  \hat{\beta}_2 (X2 - \bar{X2}) + e$$
+
+* Lefthand side takes response and removes the part of the response that is explained by $X1$  
+
+* Equal to the `term` for $X2$ plus the residual $e$
+
+* part of residual variation that is not explained by the other terms that potentially can be explained by $X2$  = partial residual for $X2$
+
+* partial residual for X1  
+
+$$\hat{\beta}_1 (\log(X1) - \bar{\log(X1)}) + e$$
+(add back in term to residual to obtain partial residual)
+
+## Summary
+
+* Linear predictors may be based on functions of other predictors
+(dummy variables, interactions, non-linear terms)
+
+* need to change back to original units
+
+* log transform useful for non-negative responses (ensures predictions are non-negative)
+
+* Be careful of units of data 
+      +  plots should show units
+      +  summary statements should include units
+      
+* Goodness of fit measure: $R^2$ and Adjusted $R^2$  depend on scale   $R^2$ is percent variation in "$Y$" that is explained by the model
+$$  R^2 = 1 - SSE/SST$$
+where SST = $\sum_i (Y_i - \bar{Y})^2$

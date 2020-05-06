@@ -1,0 +1,377 @@
+---
+title: "STA 601 Lab 9: Metropolis-Hastings"
+author: "STA 601: Bayesian Inference and Modern Statistical Methods"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: rmdformats::readthedown
+---
+
+```{r setup, message=F, warning=F, echo=F}
+#
+require(tidyverse)
+require(rstanarm)
+require(magrittr)
+require(rstan)
+require(bayesplot)
+require(loo)
+require(readxl)
+require(plyr)
+require(ggrepel)
+library(cowplot)
+require(ggtern)
+#
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+
+# Background on Metropolis Hastings
+
+As noted in the Hoff book, the Gibbs sampling algorithm is a special case of a more general class of algorithms called **Metropolis-Hastings** algorithms. Suppose we have a target density function $p_0(x)$ and a proposal distribution $J_s(x^* | x^{(s)})$, both defined on a random variable $X$. To produce draws from $p_0(x)$, the update step in a Metropolis-Hastings algorithm can be written as:
+
+1. Generate $x^*$ from $J_s\left( x^* | ~x^{(s)}\right)$
+2. Compute the acceptance ratio $r = \frac{p_0\left(x^*\right)}{p_0\left(x^{(s)}\right)} \times \frac{J_s\left( x^{(s)} |~ x^*\right)}{J_s\left( x^* | ~x^{(s)}\right)}$
+3. Accept the new sample $x^*$ with probability $r$: sample $u \sim U(0, 1)$ and set $x^{(s+1)} = x^*$ if $u < r$; else set $x^{(s+1)} = x^{(s)}$.
+
+The Metropolis-Hastings algorithm gives us a way to sample from the posterior distribution of random variables without needing to derive (or sample from) their full conditional distributions. The power of Metropolis-Hastings for doing posterior inference is that we only need to be able to *evaluate* the likelihood density function and the prior density functions. We are only truly generating candidate samples from the proposal density $J_s(x^* | x^{(s)})$, which often has a simple form.
+
+***
+### Exercise
+
+If our target distribution is the posterior distribution of some random variable, why do we only need to be able to evaluate the likelihood and the prior to run M-H?
+
+***
+
+# Logistic regression
+
+Logistic regression models a binary outcome as a Bernoulli random variable $Y$ with success probability given by a tranformation of a linear combination of predictors $X$. Each observation is modeled as
+
+$$
+Y_i \sim \text{Bernoulli} \left( \frac{e^{ X_i^T \beta}}{1 + e^{X_i^T \beta}} \right)
+$$
+
+so that the log-odds of success are given by
+
+$$
+\log \left( \frac{\text{Pr}(Y_i = 1)}{1 - \text{Pr}(Y_i = 1)}\right) = X_i^T\beta
+$$
+
+Though the logistic regression model is easy to write down, the task of doing Bayesian inference on the regression coefficients $\beta$ is comparatively difficult. The reason is that there is no closed-form for the full-conditional density function $p(\beta | Y)$.
+
+***
+### Exercise
+
+Try to find the full conditional density function $p(\beta | Y)$. Can you sample from it directly?
+
+***
+
+## Multiclass logistic regression
+
+The logistic regression model can be extended to classification of $K$ classes. Suppose that $Y$ is a random variable that can take on $K$ possible categorical values. Then the sampling model for one observation $Y_i$ may be written as
+
+$$
+Y_i \sim \text{Multinomial} \left( \frac{e^{ X_i^T \beta_1 }}{\sum_{k=1}^K e^{X_i^T \beta_k}}, \dots, \frac{e^{ X_i^T \beta_K }}{\sum_{k=1}^K e^{X_i^T \beta_k}} \right)
+$$
+
+Here, we have $K$ coefficient vectors $\beta_1, \dots, \beta_K$, each corresponding to the linear combination of predictor variables that best fits the $k^\text{th}$ category. Since the probabilities $e^{ X_i^T \beta_k } / \sum_{k=1}^K e^{X_i^T \beta_k}$ must sum to $1$, we only need to fit $K-1$ coefficient vectors. In practice we set one of the coefficent vectors, say $\beta_K$ to zero, and define the other coefficient vectors as contrasts to this baseline.
+
+What kinds of problems require a multiclass model? Consider the following dataset from base `R`, called `iris`. From the description in the `R` help pages:
+
+> This famous (Fisher's or Anderson's) iris data set gives the measurements in centimeters of the variables sepal length and width and petal length and width, respectively, for 50 flowers from each of 3 species of iris. The species are Iris setosa, versicolor, and virginica.
+
+Our goal will be to model the flower species as a function of the predictors sepal length, sepal width, petal length, and petal width. To illustrate the effect of different *shrinkage priors*, we will also add $25$ predictors that are independent of the flower species.
+
+```{r}
+n_noise_features <- 25
+noise_features <- rnorm(n_noise_features*nrow(iris)) %>% 
+                  matrix(nrow = nrow(iris)) %>% 
+                  magrittr::set_colnames(paste0("V", 1:n_noise_features)) %>%
+                  data.frame()
+modified_iris <- data.frame(noise_features, iris)
+X <- modified_iris[, 1:(ncol(modified_iris)-1)] %>% as.matrix()
+y <- as.integer(as.factor(modified_iris[, ncol(modified_iris)]))
+```
+
+# Inference with Metropolis Hastings
+
+If we place independent normal priors on our coefficient vectors, the full model is
+
+$$
+\begin{aligned}
+Y_i &\sim \text{Multinomial} \left( \frac{e^{ X_i^T \beta_1 }}{\sum_{k=1}^K e^{X_i^T \beta_k}}, \dots, \frac{e^{ X_i^T \beta_K }}{\sum_{k=1}^K e^{X_i^T \beta_k}} \right) \\
+\beta_k &\overset{iid}\sim N(0, 0.25 I)
+\end{aligned}
+$$
+
+***
+### Exercise
+
+What is the likelihood density function $p_{Y_i}(y_i | \beta_1, \dots, \beta_K)$ for this model? Write it down.
+
+***
+
+To run Metropolis-Hastings, we need to choose a proposal density from which to draw candidate posterior samples. In this lab, we will use the following density:
+
+$$
+\beta_k^* | \beta_k^{(s)} \sim N(0, (0.05)^2 I)
+$$
+
+Below, we define functions that return the three ingredients of an M-H step: (1) the proposal density, (2) the prior density, and (3) the likelihood density. In order to avoid numerical issues, we will first work in terms of the logarithm of the probability densities and exponentiate them later.
+
+```{r}
+proposal_sd <- 0.05
+#
+proposal_lpdf <- function(beta, beta0){
+  K <- length(beta)
+  lpdf <- 0
+  for(k in 2:K){
+    lpdf <- lpdf + sum(dnorm(beta[[k]], mean = beta0[[k]], sd = proposal_sd, log = T))
+  }
+  return(lpdf)
+}
+#
+prior_lpdf <- function(beta){
+  K <- length(beta)
+  lpdf <- 0
+  for(k in 2:K){
+    lpdf <- lpdf + sum(dnorm(beta[[k]], sd = 0.5, log = T))
+  }
+  return(lpdf)
+}
+#
+likelihood_lpdf <- function(y, X, beta){
+  K <- length(beta)
+  lpdf <- 0
+  for(k in 1:K){
+    lpdf <- lpdf + sum(sapply(which(y == k), function(i){
+      sum(X[i, ]*beta[[k]]) - log(sum(sapply(1:K, function(b){
+          exp(sum(X[i, ]*beta[[b]]))
+        })))
+      })
+    )
+  }
+  return(lpdf)
+}
+```
+
+The code below produces a Markov Chain that produces draws from $p(\beta_k | Y)$. It allows $5000$ iterations of the chain to pass before storing the last $5000$ draws.
+
+***
+### Exercise
+
+Look through the code chunk below (especially the first 8 lines within the `for` loop). Check to see that all of the steps in a Metropolis Hastings algorithm are there.
+
+***
+
+
+```{r}
+S <- 10000
+burn <- 5000
+beta0 <- list(a = 0, b = rnorm(ncol(X)), c = rnorm(ncol(X)))
+beta_list <- list(a = rep(0, S - burn), 
+                  b = matrix(NA, nrow = S - burn, ncol = ncol(X)),
+                  c = matrix(NA, nrow = S - burn, ncol = ncol(X)))
+for(s in 1:S){
+  #
+  beta_star <- list(a = 0,
+                    b = rnorm(length(beta0[[2]]), mean = beta0[[2]], sd = proposal_sd),
+                    c = rnorm(length(beta0[[3]]), mean = beta0[[3]], sd = proposal_sd))
+  #
+  r <- exp((likelihood_lpdf(y, X, beta_star) + prior_lpdf(beta_star) + proposal_lpdf(beta0, beta_star)) -
+           (likelihood_lpdf(y, X, beta0) + prior_lpdf(beta0) + proposal_lpdf(beta_star, beta0)))
+  #
+  if(runif(1) < r){
+    if(s > burn){
+      beta_list[["a"]][s - burn] <- beta_star[["a"]]
+      beta_list[["b"]][s - burn, ] <- beta_star[["b"]]
+      beta_list[["c"]][s - burn, ] <- beta_star[["c"]]
+    }
+    beta0 <- beta_star
+  } else {
+    if(s > burn){
+      beta_list[["a"]][s - burn] <- beta0[["a"]]
+      beta_list[["b"]][s - burn, ] <- beta0[["b"]]
+      beta_list[["c"]][s - burn, ] <- beta0[["c"]]
+    }
+  }
+}
+```
+
+Let's look at some traceplots of our posterior samples to see how well the Markov Chain is mixing:
+
+```{r}
+par(mfrow = c(3, 2))
+for(j in sample(ncol(beta_list$b), 6)){
+  plot(beta_list$b[, j], type = 'l', ylab = paste("Beta", j), xlab = "Iter", col = "purple",
+       main = paste("Acceptance ratio =", round(length(unique(beta_list$b[,j])) / nrow(beta_list$b), 3)))
+  acf(beta_list$b[, j], ylab = paste("Beta", j), main = paste("Series Beta", j))
+}
+```
+
+If our hope was to have independent samples from the posterior it looks like we're not doing so well. We can try to fix this by (1) changing the proposal density, (2) running the chain for more iterations, and/or (3) subsampling or *thinning* our posterior samples. Let's thin our chain by a factor of $10$ and see whether the resulting draws show more independence.
+
+```{r}
+thin_seq <- seq(1, nrow(beta_list$b), by = 10)
+par(mfrow = c(3, 2))
+for(j in sample(ncol(beta_list$b), 6)){
+  plot(beta_list$b[thin_seq, j], type = 'l', ylab = paste("Beta", j), xlab = "Iter", col = "purple",
+       main = paste("Acceptance ratio =", round(length(unique(beta_list$b[thin_seq,j])) / nrow(beta_list$b[thin_seq, ]), 3)))
+  acf(beta_list$b[thin_seq, j], ylab = paste("Beta", j), main = paste("Series Beta", j))
+}
+```
+
+
+The traceplots and autocorrelation plots above certainly show less dependence among the thinned samples than among the full set of draws. However we still do not have truly independent samples from the posterior. These plots illustrate some of the core difficulties of doing inference with Metropolis-Hastings, which mostly stem from having suboptimal proposal densities. 
+
+If the proposal density is too peaked around the current sample, the next draw may have a high acceptance probability, but it will be very close to (i.e. dependent on) the current sample. If the proposal is too diffuse, the probability of accepting new samples will be too low. In a previous lab, we discussed a technique called **Hamiltonian Monte Carlo**, which improves on vanilla Metropolis-Hastings by generating candidate samples that are both "far" from the current sample and likely to be accepted.
+
+For now, we will work with the thinned samples from our Metropolis-Hastings algorithm. Below we plot the thinned samples from the posterior distribution of each coefficient. Note that coefficients 26, 27, 28, and 29 correspond to the predictors in the `iris` dataset, and the other $25$ coefficients correspond to the independently simulated predictors. How does our inference look?
+
+```{r}
+((-beta_list$b[thin_seq, ] - beta_list$c[thin_seq, ])/2) %>%
+  reshape2::melt() %>%
+  dplyr::mutate(cat = "1") %>%
+  rbind(reshape2::melt(beta_list$b[thin_seq, ] + ((-beta_list$b[thin_seq, ] - beta_list$c[thin_seq, ])/2)) %>% dplyr::mutate(cat = "2")) %>%
+  rbind(reshape2::melt(beta_list$c[thin_seq, ] + ((-beta_list$b[thin_seq, ] - beta_list$c[thin_seq, ])/2)) %>% dplyr::mutate(cat = "3")) %>%
+  ggplot2::ggplot() +
+  geom_boxplot(aes(x = as.factor(Var2), y = value, fill = cat))  +
+  scale_fill_brewer(palette = "Set1", name = "Species", labels = c("Setosa", "Versicolor", "Virginica")) +
+  labs(x = "Coefficient", y = expression(beta))
+```
+
+How well does our model fit the data? To see whether the logistic regression is able to separate the three flower species, we can evaluate our model's predictions at the posterior mean of our coefficients:
+
+```{r}
+denom <- (1 + exp(X%*%t(beta_list$b[thin_seq, ])) + exp(X%*%t(beta_list$c[thin_seq, ])))
+mod_preds <- data.frame(Setosa = rowMeans(1 / denom),
+                        Versicolor = rowMeans(exp(X%*%t(beta_list$b[thin_seq, ])) / denom),
+                        Virginica = rowMeans(exp(X%*%t(beta_list$c[thin_seq, ])) / denom)) %>%
+  cbind(truth = modified_iris$Species)
+#
+ggtern::ggtern(mod_preds, aes(y = Setosa, x = Versicolor, z = Virginica, colour = truth)) +
+  geom_point(shape = 16, alpha = 0.75) +
+  ggtern::theme_rgbw() +
+  ggtern::theme_hidelabels() +
+  scale_colour_brewer(palette = "Set1", name = "True species", 
+                      labels = c("Setosa", "Versicolor", "Virginica"))
+```
+
+## Laplace prior
+
+Above, we used a Normal shrinkage prior. In general, we saw that the coefficients corresponding to the simulated predictors had values that were small, as desired. What if we used a prior that placed higher density at zero? Would we see different shrinkage effects?
+
+The Laplace (or double-exponential) density has probability density function
+
+$$
+p(x | \mu, \sigma) = \frac{1}{2\sigma}e^{-\frac{|x - \mu|}{\sigma}}
+$$
+
+with shapes for varying values of $\sigma$ given below
+
+```{r}
+data.frame(sigma = rep(c(1, 2, 4), each = 1000)) %>%
+  dplyr::group_by(sigma) %>%
+  dplyr::mutate(x = seq(-10, 10, length.out = 1000),
+                dens = (1/(2*sigma))*exp(-abs(seq(-10, 10, length.out = 1000))/sigma)) %>%
+  dplyr::ungroup() %>%
+  ggplot2::ggplot() +
+  geom_line(aes(x = x, y = dens, colour = as.factor(sigma), group = as.factor(sigma))) +
+  scale_colour_manual(values = c("#74a9cf", "#0570b0", "#023858"), name = expression(sigma))
+```
+
+Consider a modification to our original model in which we place a Laplace prior on our coefficient vectors:
+
+$$
+\begin{aligned}
+Y_i &\sim \text{Multinomial} \left( \frac{e^{ X_i^T \beta_1 }}{\sum_{k=1}^K e^{X_i^T \beta_k}}, \dots, \frac{e^{ X_i^T \beta_K }}{\sum_{k=1}^K e^{X_i^T \beta_k}} \right) \\
+\beta_k &\overset{iid}\sim L(0, \sqrt{2}(0.5) I)
+\end{aligned}
+$$
+
+Note that our choice of scale parameter gives the Laplace prior the same variance as the Gaussian prior above. Changing the prior on our coefficients requires only one modification to the M-H code above. Specifically, it requires a change to the function `prior_lpdf`.
+
+***
+### Exercise
+
+Using the code chunk below, modify the function `prior_lpdf` to return the log density of the Laplace prior given above. Follow the syntax of the Gaussian `prior_lpdf` function.
+
+***
+
+```{r}
+#
+prior_lpdf <- function(beta){
+  K <- length(beta)
+  lpdf <- 0
+  for(k in 2:K){
+    lpdf <- lpdf + # MODIFY THIS LINE, i.e. write the necessary function of beta[[k]]
+  }
+  return(lpdf)
+}
+```
+
+
+We will use the same code as before to run Metropolis-Hastings and the same code as before to plot samples from the posterior distribution of our coefficient vectors:
+
+```{r}
+S <- 10000
+burn <- 5000
+beta0 <- list(a = 0, b = rnorm(ncol(X)), c = rnorm(ncol(X)))
+beta_list <- list(a = rep(0, S - burn), 
+                  b = matrix(NA, nrow = S - burn, ncol = ncol(X)),
+                  c = matrix(NA, nrow = S - burn, ncol = ncol(X)))
+for(s in 1:S){
+  beta_star <- list(a = 0,
+                    b = rnorm(length(beta0[[2]]), mean = beta0[[2]], sd = proposal_sd),
+                    c = rnorm(length(beta0[[3]]), mean = beta0[[3]], sd = proposal_sd))
+  r <- exp((likelihood_lpdf(y, X, beta_star) + prior_lpdf(beta_star) + proposal_lpdf(beta0, beta_star)) -
+           (likelihood_lpdf(y, X, beta0) + prior_lpdf(beta0) + proposal_lpdf(beta_star, beta0)))
+  if(runif(1) < r){
+    if(s > burn){
+      beta_list[["a"]][s - burn] <- beta_star[["a"]]
+      beta_list[["b"]][s - burn, ] <- beta_star[["b"]]
+      beta_list[["c"]][s - burn, ] <- beta_star[["c"]]
+    }
+    beta0 <- beta_star
+  } else {
+    if(s > burn){
+      beta_list[["a"]][s - burn] <- beta0[["a"]]
+      beta_list[["b"]][s - burn, ] <- beta0[["b"]]
+      beta_list[["c"]][s - burn, ] <- beta0[["c"]]
+    }
+  }
+}
+```
+
+```{r}
+((-beta_list$b[thin_seq, ] - beta_list$c[thin_seq, ])/2) %>%
+  reshape2::melt() %>%
+  dplyr::mutate(cat = "1") %>%
+  rbind(reshape2::melt(beta_list$b[thin_seq, ] + ((-beta_list$b[thin_seq, ] - beta_list$c[thin_seq, ])/2)) %>% dplyr::mutate(cat = "2")) %>%
+  rbind(reshape2::melt(beta_list$c[thin_seq, ] + ((-beta_list$b[thin_seq, ] - beta_list$c[thin_seq, ])/2)) %>% dplyr::mutate(cat = "3")) %>%
+  ggplot2::ggplot() +
+  geom_boxplot(aes(x = as.factor(Var2), y = value, fill = cat))  +
+  scale_fill_brewer(palette = "Set1", name = "Species", labels = c("Setosa", "Versicolor", "Virginica")) +
+  labs(x = "Coefficient", y = expression(beta))
+```
+
+***
+### Exercise
+
+How does our inference under the Laplace prior compare to that under the Gaussian prior?
+
+***
+
+```{r}
+denom <- (1 + exp(X%*%t(beta_list$b[thin_seq, ])) + exp(X%*%t(beta_list$c[thin_seq, ])))
+mod_preds <- data.frame(Setosa = rowMeans(1 / denom),
+                        Versicolor = rowMeans(exp(X%*%t(beta_list$b[thin_seq, ])) / denom),
+                        Virginica = rowMeans(exp(X%*%t(beta_list$c[thin_seq, ])) / denom)) %>%
+  cbind(truth = modified_iris$Species)
+#
+ggtern::ggtern(mod_preds, aes(y = Setosa, x = Versicolor, z = Virginica, colour = truth)) +
+  geom_point(shape = 16, alpha = 0.75) +
+  ggtern::theme_rgbw() +
+  ggtern::theme_hidelabels() +
+  scale_colour_brewer(palette = "Set1", name = "True species", 
+                      labels = c("Setosa", "Versicolor", "Virginica"))
+```
+

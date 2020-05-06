@@ -1,0 +1,569 @@
+---
+title: 'STA 601/360 Homework8'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+library(foreign)
+library(truncnorm)
+library(knitr)
+require(magrittr)
+require(plyr)
+library(coda)
+library(patchwork)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW8 for STA-601
+
+## Exercise 1
+
+#### a)
+Run gibbs sampling to approximate the posterior distribution of {$\theta, \sigma^2, \mu, \tau^2$}. Assess the convergence of Markov chain and find the efective sample size for {$\sigma^2, \mu, \tau^2$}.
+
+The full conditional distribution of parameters are as below: 
+$$
+\begin{aligned}
+\mu|\theta_1,\ldots,\theta_m,\tau^2 &\sim N\left(
+\frac{\sum_{i=1}^m \theta_i/\tau^2 + \mu_0/\gamma_0^2}{m/\tau^2 + 1/\gamma_0^2},
+\frac{1}{m/\tau^2 + 1/\gamma_0^2}
+\right), \\
+1/\tau^2|\theta_1,\ldots,\theta_m,\mu_0 &\sim Gamma\left(
+\frac{\eta_0 + m}{2},
+\frac{\eta_0\tau_0^2 + \sum_{i=1}^m (\theta_i - \mu)^2}{2}
+\right),
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\theta_j|y_{1j},\ldots,y_{n_j,j},\sigma^2&\sim N\left(
+\frac{\sum_{i=1}^{n_j} y_{ij}/\sigma^2 + \mu/\tau^2}{n_j/\sigma^2 + 1/\tau^2},
+\frac{1}{n_j/\sigma^2 + 1/\tau^2}
+\right), \\
+\sigma^2|y_{11},\ldots,y_{n_m,m},\theta_1,\ldots,\theta_m &\sim Gamma\left(
+\frac{\nu_0 + \sum_{j=1}^m n_j}{2},
+\frac{\nu_0\sigma_0^2 + \sum_{j=1}^{m} \sum_{i=1}^{n_j}(y_{ij}-\theta_j)^2}{2}
+\right).
+\end{aligned}
+$$
+
+```{r data Q1}
+baseurl <- "http://www2.stat.duke.edu/~pdh10/FCBS/Exercises/"
+school <- list()
+for(i in 1:8){
+  temp <- read.table(paste(baseurl,"school",i,".dat",sep = ""), header = F)
+  school[[i]] <- temp
+}
+```
+
+```{r prior Q1}
+prior <- list(mu = c(mu0 = 7, gamma0 = 5),
+              tau = c(eta0 = 2, tau0 = 10),
+              sigma = c(nu0 = 2, sigma0 = 15))
+```
+
+```{r gibbs Q1}
+gibbs_Q1 <- function(data, prior, iteration){
+  mu0 <- prior$mu[1]; gamma0 <- prior$mu[2]
+  eta0 <- prior$tau[1]; tau0 <- prior$tau[2]
+  nu0 <- prior$sigma[1]; sigma0 <- prior$sigma[2]
+  
+  theta_cur <- rep(0,8); sigma_cur <- 1; mu_cur <- 0; tau_cur <- 1
+  theta <- data.frame(matrix(rep(NA, iteration*8), ncol = 8))
+  mu <- rep(NA, iteration); tau <- rep(NA, iteration)
+  sigma <- rep(NA, iteration)
+  
+  ybar <- sapply(flatten(data),mean)
+  ynum <- sapply(flatten(data),length)
+  for(i in 1:iteration){
+    #update theta
+    theta_var <- (tau_cur^(-1) + ynum*sigma_cur^(-1))^(-1)
+    theta_mean <- (theta_var * (tau_cur^(-1)*mu_cur + sigma_cur^(-1)*ynum*ybar))
+    theta_cur <- theta[i,] <- rnorm(8,mean = theta_mean, sd = theta_var^(1/2))
+    
+    #update mu
+    mu_var <- (gamma0^(-1) + 8*tau_cur^(-1))^(-1)
+    mu_mean <- mu_var * (mu0 * gamma0^(-1) + 8*mean(theta_cur)*tau_cur^(-1))
+    mu_cur <- mu[i] <- rnorm(1, mean = mu_mean, sd = mu_var^(1/2))
+    
+    #update tau
+    eta <- eta0 + 8
+    taun <- tau0*eta0 + sum((theta_cur - mu_cur)^2)
+    tau_cur <- tau[i] <- rgamma(1, eta/2, taun/2)^(-1)
+    
+    #update sigma
+    nu <- nu0 + sum(ynum)
+    SSE <- 0
+    for(j in 1:8){
+      temp <- sum((data[[j]]-theta_cur[j])^2)
+      SSE <- SSE + temp
+    }
+    sigman <- nu0 * sigma0 + SSE
+    sigma_cur <- sigma[i] <- rgamma(1, nu/2, sigman/2)^(-1)
+  }
+  result <- list(theta = theta, 
+                 sigma = sigma,
+                 mu = mu,
+                 tau = tau)
+  return(result)
+}
+sample_Q1 <- gibbs_Q1(data = school, prior = prior, iteration = 10000)
+```
+
+```{r diagnostic Q1}
+par(mfrow = c(1,3))
+post_samples <- sample_Q1[c("sigma","mu","tau")]
+sapply(post_samples,effectiveSize)
+sapply(post_samples,acf)
+sapply(post_samples,plot,type = "l")
+```
+When we extract 10000 samples, effective size for sigma, mu, and tau are 9236, 8712, and 7391. For assessment of algorithm convergence, I draw plot of acf and trace plot. As we find the effective size for variables decreases from sigma to tau, the autocorrelation increase from sigma to tau. Also, trace plot shows same result. However, the acf of variables are so low that it converges very fastly.
+
+#### b) 
+Compute the posterior means and 95% confidence interval for {$\sigma^2, \mu, \tau$}. And compare the posterior distribution to prior distribution.
+
+```{r}
+confidence <- function(x){
+  bound <- c(quantile(x,0.025),quantile(x,0.975))
+  return(bound)
+}
+
+prior_samples <- list(sigma = rgamma(10000,1,15)^(-1),
+                      mu = rnorm(10000, 7, 5^(1/2)),
+                      tau = rgamma(10000,1,10)^(-1))
+
+kable(sapply(post_samples, mean), caption = "posterior mean")
+kable(sapply(post_samples, confidence), caption = "confidence region")
+
+post_samples <- bind_cols(post_samples)
+prior_samples <- bind_cols(prior_samples)
+
+p1 <- ggplot(data = post_samples, aes(x = sigma, col = "posterior"))+
+  geom_density() +
+  xlim(5,30) +
+  geom_density(aes(x = prior_samples$sigma, col = "prior"), linetype = 2) +
+  labs(title = "sigma")
+
+p2 <- ggplot(data = post_samples, aes(x = mu, col = "posterior"))+
+  geom_density() +
+  xlim(0,20) +
+  geom_density(aes(x = prior_samples$mu, col = "prior"), linetype = 2)+
+  labs(title = "mu")
+
+p3 <- ggplot(data = post_samples, aes(x = tau, col = "posterior"))+
+  geom_density() +
+  xlim(0,20) +
+  geom_density(aes(x = prior_samples$tau, col = "prior"), linetype =2)+
+  labs(title = "tau")
+p1
+p2
+p3
+```
+We learn that sigma is concentrated at region between 10 and 20, mu is concentrated at region between 5 and 10, tau is concentrated at region between 0 and 10 from the data. For mu and tau, we can find that the posterior mean is consistent with previous expectation which make us learn our previous expectation was relatively accurate. On the contrary, previous expectation about sigma is not consistent with posterior mean which make us learn that our previous expectation was wrong.
+
+#### c)
+Plot the posterior density of R and compare it of the prior density of R
+
+```{r}
+post_r <- post_samples$tau/(post_samples$tau + post_samples$sigma)
+prior_r <- prior_samples$tau/(prior_samples$tau + prior_samples$sigma)
+ggplot() +
+  geom_density(aes(x = post_r, col = "posterior")) +
+  geom_density(aes(x = prior_r, col = "prior"), linetype = 2) +
+  labs(title = "posterior R versus prior R")
+```
+R indicates the contribution of between-school variance in total variance. Our prior R is so diffused. On the other hand, posterior R is concentrated at 0.25 which indicates smaller contribution of between-school variance to total variance.
+
+#### d)
+Obtain the posterior probability that $\theta_7$ is smaller than $\theta_6$ as well as the posterior probability that $\theta_7$ is smaller than other $\theta's$
+
+```{r}
+post_theta <- sample_Q1$theta
+mean(post_theta$X7<post_theta$X6)
+mean(apply(post_theta,1 , min) == post_theta$X7) 
+```
+
+#### e)
+Plot the sample average against the posterior expectation and describe relationship. Add sample mean of all observations and compare it to the posterior mean.
+
+```{r}
+ybar <- sapply(flatten(school), mean)
+post_mean <- apply(post_theta,2,mean)
+overall_sample_mean <- mean(unlist(school))
+overall_post_mean <- mean(unlist(post_theta))
+ggplot(mapping = aes(x = post_mean, y = ybar)) +
+  geom_text(label = 1:8) +
+  geom_abline(slope = 1) +
+  geom_hline(yintercept = overall_post_mean, linetype = 2, col = "red") +
+  geom_hline(yintercept = overall_sample_mean, linetype = 1, col = "blue") +
+  annotate("text",x = 10, y = 8, label = "sample mean", col = "blue") +
+  annotate("text",x = 10, y = 7.3, label = "posterior mean", col = "red") +
+  labs(title = "sample versus posterior", x = "posterior theta", y = "sample ybar")
+```
+The posterior mean for parameter $\mu$ which is parameter of overall mean is a little less than total sample average. This might be caused by prior information which assumed smaller value for $\mu$ than sample has. For the relationship of sample mean and posterior mean for each group, they seem to be shrunk to global mean when considering their comparing the line y = x. 
+
+## Exercise2 
+
+```{r data}
+swim <- read.table("http://www2.stat.duke.edu/~pdh10/FCBS/Exercises/swim.dat")
+swim <- cbind.data.frame(t(swim),week = seq(2,12,2)) 
+colnames(swim) <- c("p1","p2","p3","p4","week")
+```
+
+#### a)
+Fit a linear regression model of swimming time as the response and week as the explantory variable.
+competitive times range from 22 to 24. 
+Since it ranges from 22 to 24, I set up prior b0 as (23,-0.1) because as week passed, I assume that player might improve their ability. For the prior of variance, I assume that average variance would be 0.25 so that 95% players are capture in interval.
+
+$\rightarrow P(y \in (22,24)) = 0.95$
+
+$P(\beta) \sim N(b_o,\Sigma_\beta)$ where $b_0 = \begin{bmatrix} 23 \\ -0.1\end{bmatrix}, \Sigma_\beta = \begin{bmatrix} 1 & 0 \\ 0 & 0.1 \end{bmatrix}$
+$P(1/\sigma^2) \sim gamma(\nu_0/2,\nu_0\sigma_0^2/2)$ where $\nu_0 = 4, \sigma_0^2 = 0.25$
+
+For the full conditional distribution for $\beta, 1/\sigma^2$ are as below :
+
+$$
+\boldsymbol{\beta}|\mathbf{y},\mathbf{X},\sigma^2 \sim N(
+(\Sigma_0 + \mathbf{X}^T\mathbf{X}/\sigma^2)^{-1}(\Sigma_0^{-1}\boldsymbol{\mu} + \mathbf{X}^T\mathbf{y}/\sigma^2),
+(\Sigma_0 + \mathbf{X}^T\mathbf{X}/\sigma^2)^{-1})
+$$
+
+$$
+1/\sigma^2|\mathbf{y},\mathbf{X},\boldsymbol{\beta} \sim Gamma(
+(\nu_0 + n)/2,
+[\nu_0\sigma_0^2 + (\mathbf{Y-X}\boldsymbol{\beta})^T(\mathbf{Y-X}\boldsymbol{\beta})]/2
+).
+$$
+
+```{r}
+prior <- list(b0 = c(23, -0.1),
+              sigma_beta0 = matrix(c(1,0,0,0.1), nrow = 2),
+              nu0 = 4,
+              sigma0 = 0.25)
+gibbs_Q2 <- function(data, prior, iteration){
+  #set up prior
+  b0 <- prior$b0; sigma_beta0 <- prior$sigma_beta0
+  nu0 <- prior$nu0; sigma0 <- prior$sigma0
+  
+  #set data
+  pred.mat <- cbind(1,1:6)
+  identity <- matrix(c(1,0,0,1), nrow = 2)
+  beta_cur <- c(23,0); sigma_cur <- 1
+  beta <- matrix(rep(NA,2*iteration),ncol = 2)
+  sigma <- rep(NA,iteration)
+  pred.y <- rep(NA,iteration)
+  
+  for(i in 1:iteration){
+    #update beta
+    sigma_betan <- solve((t(pred.mat) %*% pred.mat)/sigma_cur + solve(sigma_beta0))
+    bn <- sigma_betan %*% ((t(pred.mat) %*% data)/sigma_cur + solve(sigma_beta0) %*% b0)
+    beta_cur <- beta[i,] <- MASS::mvrnorm(n = 1, mu = bn, Sigma = sigma_betan)
+    
+    #update sigma
+    nun <- nu0 + length(data)
+    sigman <- nu0*sigma0 + t(data- pred.mat %*% beta_cur) %*% (data- pred.mat %*% beta_cur)
+    sigma_cur <- sigma[i] <- rgamma(1, nun, sigman)^(-1)
+    
+    #predict y
+    pred.y[i] <- c(1,14) %*% beta[i,] + rnorm(1,0,sigma[i]^(1/2))
+  }
+  
+  result <- list(beta = beta,
+                 sigma = sigma,
+                 Y = pred.y)
+  return(result)
+}
+p1 <- gibbs_Q2(swim$p1, prior, 10000)
+p2 <- gibbs_Q2(swim$p2, prior, 10000)
+p3 <- gibbs_Q2(swim$p3, prior, 10000)
+p4 <- gibbs_Q2(swim$p4, prior, 10000)
+mean(p1$Y); mean(p2$Y); mean(p3$Y); mean(p4$Y)
+ggplot() +
+  geom_density(mapping = aes(x = p1$Y, group = 1, color = "LINE1"), linetype = 1) +
+  geom_density(mapping = aes(x = p2$Y, group = 1, color = "LINE2"), linetype = 2) +
+  geom_density(mapping = aes(x = p3$Y, group = 1, color = "LINE3"), linetype = 3) +
+  geom_density(mapping = aes(x = p4$Y, group = 1, color = "LINE4"), linetype = 4) +
+  labs(title = "posterior predictive distribution of swimming time for each players", x = "time",
+       colors = "player") +
+  scale_color_manual(values = c("red","blue","yellow","green"), labels = c("p1","p2","p3","p4"), name = "players")
+```
+
+#### b)
+compute P($Y_j = max\{Y_1,Y_2,Y_3,Y_4 \mid Y\}$) for each swimmer j
+```{r}
+time <- cbind.data.frame(p1$Y,p2$Y,p3$Y,p4$Y)
+time <- cbind.data.frame(time, apply(time,1,max))
+colnames(time) <- c("p1","p2","p3","p4","max")
+kable(apply(time[,-5], 2, function(x) mean(x == time[,5])), caption = "probability that each players place at last")
+```
+
+When consider predictive posterior distribution of players and their probabilities that they place at last, player1 is very likely to be the most competitive player. Thus I recommend player1.
+
+## Exercise 3
+Derive the gibbs sampler for standard bayesian ANOVA
+
+$$
+\begin{aligned}
+&Y_{ijk} \sim N(\theta_ij,\sigma^2) \\
+& where \; \theta_{ij} = \mu + a_i + b_j + ab_{ij}\\
+& \mu \sim N(0, \sigma_\mu^2), \quad a_1 \cdot\cdot\cdot a_{m_1} \sim iid\; N(0, \sigma_a^2) \\
+& b_1 \cdot\cdot\cdot b_{m_2} \sim iid \; N(0, \sigma_b^2), \quad ab_{11} \cdot\cdot\cdot ab_{m_1m_2} \sim iid \; N(0,\sigma^2_{ab})
+\end{aligned}
+$$
+
+Let overall observation number is $N$ and we can find that $\mathbf{a,b,ab}$ are $m_1, m_2, m_1 * m_2$ dimension. As a result, divided group has $m_1 * m_2$ and each group have $\frac{N}{m_1m_2}$
+
+The likelihood function of data is as follow:
+$$
+\begin{aligned}
+P(Y \mid \boldsymbol{\theta}, \sigma^2) &\propto (\sigma^2)^{-N/2} exp\{-\frac{1}{2\sigma^2}\sum_i\sum_j\sum_k (y_{ijk} - \theta_{ij})^2 \} \\
+= P(Y \mid \mathbf{a,b,ab}, \mu, \sigma^2) &\propto (\sigma^2)^{-N/2} exp\{-\frac{1}{2\sigma^2}\sum_i\sum_j\sum_k (y_{ijk} - \mu - a_i - b_j - ab_{ij})^2 \}
+\end{aligned}
+$$
+For full conditional distribution for $\mu$
+$$
+\begin{aligned}
+&P(Y \mid \mathbf{a,b,ab},\mu,\sigma^2) \propto_\mu exp\{-\frac{1}{2\sigma^2} (N\mu^2 -2\mu\sum_i\sum_j\sum_k (y_{ijk} - a_i - b_j - ab_{ij})) \} \\
+&P(\mu \mid \mathbf{Y, a, b, ab}, \sigma^2) \propto P(\mu)P(Y \mid \mathbf{a,b,ab},\mu,\sigma^2) \\ 
+&\propto exp\{-\frac{\mu^2}{2\sigma_\mu^2}\}exp\{-\frac{1}{2\sigma^2} (N\mu^2 -2\mu\sum_i\sum_j\sum_k (y_{ijk} - a_i - b_j - ab_{ij})) \} \\
+&\rightarrow Var(\mu \mid \mathbf{Y, a, b, ab}, \sigma^2) = (\frac{N}{\sigma^2} + \frac{1}{\sigma^2_\mu})^{-1}, 
+\quad E(\mu \mid \mathbf{Y, a, b, ab}, \sigma^2) = (\frac{N}{\sigma^2} + \frac{1}{\sigma^2_\mu})^{-1} \frac{\sum_i\sum_j\sum_k (y_{ijk} - a_i - b_j - ab_{ij})}{\sigma^2}
+\end{aligned}
+$$
+For full conditional distribution for $a_i$
+$$
+\begin{aligned}
+&P(Y \mid \mathbf{a,b,ab},\mu,\sigma^2) \propto_a exp\{-\frac{N}{2m_1\sigma^2} \sum_{i=1}^{m_1}(a_i^2 -2a_i\sum_j\sum_k (y_{ijk} - \mu - b_j - ab_{ij})) \} \\
+&P(\mathbf{a} \mid \mathbf{Y, b, ab},\mu ,\sigma^2) \propto P(\mathbf{a})P(Y \mid \mathbf{a,b,ab},\mu,\sigma^2) \\ 
+&\propto exp\{-\frac{1}{2\sigma_\mu^2}\sum_{i=1}^{m_1} a_i^2\}exp\{-\frac{N}{2m_1\sigma^2} \sum_{i=1}^{m_1}(a_i^2 -2a_i\sum_j\sum_k (y_{ijk} - \mu - b_j - ab_{ij})) \} \\
+&=\prod_{i=1}^{m_1} P(a_i \mid \mathbf{Y, b, ab},\mu ,\sigma^2) \\
+&\rightarrow  P(a_i \mid \mathbf{Y, b, ab},\mu ,\sigma^2) = exp\{-\frac{1}{2\sigma_\mu^2} a_i^2\}exp\{-\frac{N}{2m_1\sigma^2} (a_i^2 -2a_i\sum_j\sum_k (y_{ijk} - \mu - b_j - ab_{ij})) \}\\
+&\rightarrow Var(a_i \mid \mathbf{Y, b, ab}, \mu,\sigma^2) = (\frac{N}{m_1\sigma^2} + \frac{1}{\sigma^2_a})^{-1},
+\quad E(a_i \mid \mathbf{Y, b, ab}, \mu,\sigma^2) = (\frac{N}{m_1\sigma^2} + \frac{1}{\sigma^2_a})^{-1} \frac{\sum_j\sum_k (y_{ijk} - \mu - b_j - ab_{ij})}{\sigma^2}
+\end{aligned}
+$$
+For full conditional distribution for $b_j$, similar with $a_i$
+$$
+\begin{aligned}
+Var(b_j \mid \mathbf{Y, a, ab}, \mu,\sigma^2) = (\frac{N}{m_2\sigma^2} + \frac{1}{\sigma^2_b})^{-1},
+\quad E(b_j \mid \mathbf{Y, a, ab}, \mu,\sigma^2) = (\frac{N}{m_2\sigma^2} + \frac{1}{\sigma^2_a})^{-1} \frac{\sum_i\sum_k (y_{ijk} - \mu - a_i - ab_{ij})}{\sigma^2}
+\end{aligned}
+$$
+For full conditional distribution for $ab_{ij}$
+$$
+\begin{aligned}
+&P(Y \mid \mathbf{a,b,ab},\mu,\sigma^2) \propto_{ab} exp\{-\frac{N}{2m_1m_2\sigma^2} \sum_{i=1}^{m_1}\sum_{j=1}^{m_2}(ab_{ij}^2 -2ab_{ij}\sum_k (y_{ijk} - \mu - a_i - b_j)) \} \\
+&P(\mathbf{ab} \mid \mathbf{Y, a, b},\mu ,\sigma^2) \propto P(\mathbf{ab})P(Y \mid \mathbf{a,b,ab},\mu,\sigma^2) \\ 
+&\propto exp\{-\frac{1}{2\sigma_\mu^2}\sum_{i=1}^{m_1}\sum_{j=1}^{m_2}ab_{ij}^2\}exp\{-\frac{N}{2m_1m_2\sigma^2} \sum_{i=1}^{m_1}\sum_{j=1}^{m_2}(ab_{ij}^2 -2ab_{ij}\sum_k (y_{ijk} - \mu - a_i - b_j)) \} \\
+&=\prod_{i=1}^{m_1}\prod_{j=1}^{m_2} P(ab_{ij} \mid \mathbf{Y, a, b},\mu ,\sigma^2) \\
+&\rightarrow  P(ab_{ij} \mid \mathbf{Y, a, b},\mu ,\sigma^2) = exp\{-\frac{1}{2\sigma_\mu^2}ab_{ij}^2\}exp\{-\frac{N}{2m_1m_2\sigma^2} (ab_{ij}^2 -2ab_{ij}\sum_k (y_{ijk} - \mu - a_i - b_j)) \}\\
+&\rightarrow Var(ab_{ij} \mid \mathbf{Y, b, ab}, \mu,\sigma^2) = (\frac{N}{m_1m_2\sigma^2} + \frac{1}{\sigma^2_{ab}})^{-1},
+\quad E(ab_{ij} \mid \mathbf{Y, a, b}, \mu,\sigma^2) = (\frac{N}{m_1m_2\sigma^2} + \frac{1}{\sigma^2_{ab}})^{-1} \frac{\sum_k (y_{ijk} - \mu - a_i - b_j )}{\sigma^2}
+\end{aligned}
+$$
+For semi-conjugate prior for variance of normal distribution, gamma distribution is appropriate choice 
+$$
+\begin{aligned}
+&1/\sigma^2_\mu \sim gamma(\nu_\mu/2, \nu_\mu\tau_\mu^2/2) \\
+&1/\sigma^2_a \sim gamma(\nu_a/2, \nu_a\tau_a^2/2) \\ 
+&1/\sigma^2_b \sim gamma(\nu_b/2, \nu_\mu\tau_b^2/2) \\
+&1/\sigma^2_{ab} \sim gamma(\nu_{ab}/2, \nu_\mu\tau_{ab}^2/2) \\
+&1/\sigma^2 \sim gamma(\nu_0/2, \nu_0\tau_0^2/2)
+\end{aligned}
+$$
+As hierachical model, we can find that variance for $\mu, a, b, ab$ are not directly depending on data Y. When we update posterior distribution for variances
+$$
+\begin{aligned}
+&1/\sigma^2_\mu \sim gamma(\nu_\mu+1/2, (\nu_\mu\tau_\mu^2 + \mu^2)/2) \\
+&1/\sigma^2_a \sim gamma(\nu_a + m_1/2, (\nu_a\tau_a^2+\sum^{m1}a_i^2)/2) \\ 
+&1/\sigma^2_b \sim gamma(\nu_b + m2/2, (\nu_\mu\tau_b^2+\sum^{m2}b_i^2)/2) \\
+&1/\sigma^2_{ab} \sim gamma((\nu_{ab}+m_1\times m_2)/2, (\nu_{ab}\tau_{ab}^2 +\sum^{m1}\sum^{m2}(ab_{ij})^2)/2) \\
+&1/\sigma^2 \sim gamma(\nu_0 + N/2, (\nu_0\tau_0^2 + \sum_i\sum_j\sum_k(y_{ijk} - \mu - a_i - b_j -ab_{ij})^2)/2)
+\end{aligned}
+$$
+
+Applying above logic to data, we can specify that N = 60, m1 = 2, m2 = 3
+
+```{r}
+str(ToothGrowth)
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+```
+
+Arbitrary priors are selected because we don't have any information about data. Priors for $\sigma^2$s are selected to satisfy weak information prior which have mean value 1
+
+```{r}
+prior <- list(mu = c(2,1),
+              a = c(2,1),
+              b = c(2,1),
+              ab = c(2,1),
+              sigma = c(2,1))
+```
+
+```{r}
+data <- ToothGrowth
+iteration = 10
+i = 1
+gibbs_Q3 <- function(data, prior, iteration){
+  #set up prior
+  m1 <- nlevels(data$supp); m2 <- nlevels(data$dose); N <- nrow(data)
+  nu_mu <- prior$mu[1]; nu_a <- prior$a[1]; nu_b <- prior$b[1]; nu_ab <- prior$ab[1]; nu0 <- prior$sigma[1]
+  tau_mu <- prior$mu[2]; tau_a <- prior$a[2]; tau_b <- prior$b[2]; tau_ab <- prior$ab[2]; tau0 <- prior$sigma[2]
+  
+  #set up
+  mu_cur <- 0; a_cur <- rep(0,m1); b_cur <- rep(0,m2); ab_cur <- matrix(rep(0,m1*m2),ncol = 3)
+  mu <- rep(NA,iteration); a <- data.frame(matrix(rep(NA,m1*iteration),ncol = m1)) %>% `colnames<-`(c("a1","a2"))
+  b <- data.frame(matrix(rep(NA,m2*iteration), ncol = m2)) %>% `colnames<-`(c("b1","b2","b3"))
+  ab <- array(rep(NA,m1*m2*iteration), dim = c(m1,m2,iteration))
+  ab_vec <- data.frame(matrix(rep(NA,m1*m2*iteration),ncol = m1*m2)) %>% `colnames<-`(c("ab11","ab12","ab13","ab21","ab22","ab23"))
+    
+  ybar <- data %>% 
+      group_by(supp,dose) %>% 
+      dplyr::summarise(mean = mean(len))
+    
+  ynum <- data %>% 
+      group_by(supp,dose) %>% 
+      dplyr::summarise(count = n())
+  ybar_a <- data %>% group_by(supp) %>% dplyr::summarise(sum = sum(len)) %>% select(sum)
+  ybar_b <- data %>% group_by(dose) %>% dplyr::summarise(sum = sum(len)) %>% select(sum)
+  #updating
+  for(i in 1:iteration){
+    data <- data %>% 
+      mutate(a_value = case_when(
+        supp == "VC" ~ a_cur[1],
+        supp == "OJ" ~ a_cur[2]
+      )) %>% 
+      mutate(b_value = case_when(
+        dose == 0.5 ~ b_cur[1],
+        dose == 1 ~ b_cur[2],
+        dose == 2 ~ b_cur[3]
+      )) %>% 
+      mutate(ab_value = case_when(
+        supp == "VC" & dose == 0.5 ~ ab_cur[1,1],
+        supp == "VC" & dose == 1 ~ ab_cur[1,2],
+        supp == "VC" & dose == 2 ~ ab_cur[1,3],
+        supp == "OJ" & dose == 0.5 ~ ab_cur[2,1],
+        supp == "OJ" & dose == 1 ~ ab_cur[2,2],
+        supp == "OJ" & dose == 2 ~ ab_cur[2,3],
+      ))
+    
+    #update sigma
+    sigma_cur <- rgamma(1, (nu0 + N)/2, 
+                       (nu0*tau0 + sum((data$len - mu_cur - data$a_value - data$b_value - data$ab_value)^2)/2))^(-1)
+    #update mu
+    sigma_mu <- rgamma(1, (nu_mu+1)/2, (nu_mu*tau_mu + mu_cur^2)/2)^(-1)
+    var_mu <- (N/sigma_cur + 1/sigma_mu)^(-1)
+    E_mu <- var_mu*(sum(data$len) - N/m1*sum(a_cur) - N/m2*sum(b_cur) - N/(m1*m2)*sum(ab_cur))/sigma_cur
+    mu_cur <- mu[i] <- rnorm(1, mean = E_mu, sd = var_mu^(1/2))
+    
+    #update a
+    sigma_a <- rgamma(1, (nu_a + m1)/2, (nu_a*tau_a+sum(a_cur^2))/2)^(-1)
+    var_a <- (N/(m1*sigma_cur) + 1/sigma_a)^(-1)
+    E_a <- var_a * (ybar_a - (N*mu_cur)/m1 - N*mean(b_cur)/m1 - N/m1*apply(ab_cur,1,mean))/(sigma_cur*m1)
+    a_cur <- a[i, ] <- rnorm(m1, mean = t(E_a), sd = var_a^(1/2))
+    
+    #update b
+    sigma_b <- rgamma(1, (nu_b + m2)/2, (nu_b*tau_b+sum(b_cur^2))/2)^(-1)
+    var_b <- (N/(m2*sigma_cur) + 1/sigma_b)^(-1)
+    E_b <- var_b * (ybar_b - (N*mu_cur)/m2 - N*mean(a_cur)/m2 - N/m2*apply(ab_cur,2,mean))/(sigma_cur*m2)
+    b_cur <- b[i, ] <- rnorm(m2, mean = t(E_b), sd = var_b^(1/2))
+    
+    #update ab
+    sigma_ab <- rgamma(1, (nu_ab + m1*m2)/2, (nu_ab*tau_ab + sum(ab_cur^2))/2)^(-1)
+    var_ab <- (N/(m1*m2*sigma_cur) + 1/sigma_ab) ^ (-1)
+    E_ab <- var_ab * (ybar$mean * ynum$count - N/(m1*m2)*mu_cur - ynum$count*rep(a_cur,c(3,3)) - ynum$count*rep(b_cur,2))/(sigma_cur*m1*m2)
+    ab_cur <- ab[,,i] <- matrix(rnorm(m1*m2, mean = E_ab, sd = var_ab^(1/2)),byrow = T,ncol = 3)
+    ab_vec[i,] <- matrix(ab[,,i],nrow = 1)
+  }
+
+  result <- list(mu = mu,
+                 a = a,
+                 b = b,
+                 ab = ab,
+                 ab_vec = ab_vec)
+  return(result)
+}
+sample_Q3 <- gibbs_Q3(data = ToothGrowth, prior = prior, iteration = 10000)
+```
+
+```{r diagnostic Q3} 
+sapply(sample_Q3[c("mu","a","b","ab_vec")],effectiveSize)
+sapply(sample_Q3[c("mu","a","b","ab_vec")],acf)
+
+mu <- as.data.frame(sample_Q3$mu) %>% 
+  `colnames<-`("mu")
+a <- as.data.frame(sample_Q3$a)
+b <- as.data.frame(sample_Q3$b)
+ab <- as.data.frame(sample_Q3$ab_vec)
+
+ggplot(data = mu ,aes(x = 1:10000,y = mu)) +
+  geom_line() +
+  labs(title = "trace plot of mu")
+
+ggplot(data = a, mapping = aes(x=1:10000)) +
+  geom_line(aes(y=a1, col = "a1")) +
+  geom_line(aes(y=a2, col = "a2")) +
+  labs(title = "trace plot of a")
+
+ggplot(data = b, mapping = aes(x=1:10000)) +
+  geom_line(aes(y=b1, col = "b1")) +
+  geom_line(aes(y=b2, col = "b2")) +
+  geom_line(aes(y=b3, col = "b3")) +
+  labs(title = "trace plot of b")
+
+ggplot(data = ab, mapping = aes(x=1:10000)) +
+  geom_line(aes(y=ab11, col = "ab11")) +
+  geom_line(aes(y=ab12, col = "ab12")) +
+  geom_line(aes(y=ab13, col = "ab13")) +
+  geom_line(aes(y=ab21, col = "ab21")) +
+  geom_line(aes(y=ab22, col = "ab22")) +
+  geom_line(aes(y=ab23, col = "ab23")) +
+  labs(title = "trace plot of ab")
+
+theta.mcmc <- data.frame(theta11 = mu + a$a1 + b$b1 + ab$ab11,
+                         theta12 = mu + a$a1 + b$b2 + ab$ab12,
+                         theta13 = mu + a$a1 + b$b3 + ab$ab13,
+                         theta21 = mu + a$a2 + b$b1 + ab$ab21,
+                         theta22 = mu + a$a2 + b$b2 + ab$ab22,
+                         theta23 = mu + a$a2 + b$b3 + ab$ab23) %>% 
+  `colnames<-`(c("theta11","theta12","theta13","theta21","theta22","theta23"))
+
+ggplot(data = theta.mcmc, aes(x= 1:10000)) +
+  geom_line(aes(y=theta11, col = "theta11")) +
+  geom_line(aes(y=theta12, col = "theta12")) +
+  geom_line(aes(y=theta13, col = "theta13")) +
+  geom_line(aes(y=theta21, col = "theta21")) +
+  geom_line(aes(y=theta22, col = "theta22")) +
+  geom_line(aes(y=theta23, col = "theta23")) +
+  labs(title = "trace plot of combined parameter : theta")
+
+
+post.mean = list(mu = mean(sample_Q3$mu),
+  a = apply(sample_Q3$a,2,mean),
+  b = apply(sample_Q3$b,2,mean),
+  ab = apply(sample_Q3$ab_vec,2,mean))
+
+theta <- rep(post.mean$mu,6) + rep(post.mean$a,c(3,3)) + rep(post.mean$b,2) + post.mean$ab
+
+names(theta) <- paste(expression(theta),c(11,12,13,21,22,23))
+ybar <- ToothGrowth %>% 
+  group_by(supp,dose) %>% 
+  dplyr::summarise(ybar = mean(len))
+
+kable(cbind.data.frame(ybar$ybar, theta) %>% 
+  `colnames<-`(c("sample mean","posterior mean")))
+
+post.mean
+```
+
+For an assessment of convergence, `mu` has little autocorrelation as we can find its autocorrelation plot. The trace plot of `mu` also indicates its stability. `a` parameters are also stable which represented at effective size, autocorrelation function and their trace plot. In the same way, `b` and `ab` parameters are stable and converge and it represented at their effective size, autocorrelation function and trace plot. When we examine posterior mean of all parameters, we can find that all effects are showing positive  For the sum of each components $\mu + a_i + b_j + ab_{ij}$, it also show stable convergence considering its traceplot. 
+When I investigate shrinkage, I decide to compare sample mean versus posterior mean. When we compare them, we can find that posterior mean are shrink from each sample mean $\bar{y_{ij}}$ to global mean $\mu$ which is about 18.
+
+When I consider sign of each parameter's coefficient, we can conclude that `OJ` makes teeth grow, and higher level of vitamin C also makes teeth grow.

@@ -1,0 +1,45 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Read Data
+
+```{r}
+candy = read.csv("candy-data.csv")
+summary(candy)
+```
+
+```{r}
+candy.lm = lm(winpercent ~ (.- competitorname), data=candy)
+summary(candy.lm)
+```
+
+
+```{r}
+candy.AIC = step(candy.lm)
+candy.AIC 
+```
+
+```{r}
+library(BAS)
+candy.bas = bas.lm(as.formula(candy.AIC), data=candy,
+                   prior = 'JZS', modelprior=uniform(),
+                   method='MCMC',
+                   n.models=1000, MCMC.iterations=80000, thin=20, 
+                   force.heredity = TRUE)
+candy.bas = bas.lm(winpercent ~ chocolate + fruity + peanutyalmondy + crispedricewafer + 
+    hard + sugarpercent, data=candy,
+                   prior = 'JZS', modelprior=uniform(),
+                   method='MCMC',
+                   n.models=1000, MCMC.iterations=80000, thin=20, 
+                   force.heredity = TRUE)
+diagnostics(candy.bas)
+plot(candy.bas)
+```
+
+
+```{r}
+summary(coef(candy.bas, estimator="MPM"))
+```
+

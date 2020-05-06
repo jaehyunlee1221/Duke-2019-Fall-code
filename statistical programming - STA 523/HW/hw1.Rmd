@@ -1,0 +1,71 @@
+---
+title: "Homework 1"
+author: 'Jae Hyun Lee'
+date: "9/03/2019"
+output: 
+  html_document:
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA)
+```
+
+## Task 1
+
+```{r function defining}
+is.armstrong <- function(x) {
+  stopifnot(all(x>0),all(x<1000),all(x%%1==0))
+  first <- x%/%100
+  second <- (x-first*100)%/%10
+  third <- (x-first*100-second*10)
+  result <- rep(F,length(x))
+  
+  for(i in seq_along(x)){
+    if(x[i]>100) {
+      pt <-3
+    } else if (x[i]>10){
+      pt <-2 
+    } else pt <-1
+    
+    result[i] <- (x[i]==(first[i]^pt + second[i]^pt + third[i]^pt))
+  }
+  return(result)
+}
+```
+
+
+## Task 2
+
+#### Valid inputs
+
+```{r validation-valid}
+is.armstrong(x = 1)
+is.armstrong(x = 153)
+is.armstrong(x = 154)
+is.armstrong(x = c(153, 154))
+is.armstrong(x = 1:999)
+```
+
+#### Invalid inputs
+
+```{r validation-invalid, eval=FALSE}
+is.armstrong(x = -2)
+is.armstrong(x = 1011)
+is.armstrong(x = c(pi, 6))
+is.armstrong(x = "a")
+```
+
+## Task 3
+
+#### 1. Is your function robust?
+
+answer: I think it performs well and it is quite robust. Because it is successfully excuted with valid inputs, and not excuted with invalid inputs. it prevents invalid inputs such as negative values, too large values, other types of inputs by using "stopifnot" function. 
+
+#### 2. what are your function's weakness?
+
+answer: It is relatively slow and its computation is expensive because I have calculated each element of vector and used "for" function as iteration methods.
+
+#### 3. Why did you choose to a specific set of use control flow code?
+
+answer: I wish I could use vectorize method so that I don't need to loop function. However, I couldn't find other way but to compare and calculated. Especially, when decide how much power I should give to elements of vector.

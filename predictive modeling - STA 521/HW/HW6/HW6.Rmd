@@ -1,0 +1,442 @@
+---
+title: 'HW6: TEAM 3'
+author: 'Zhenyu Tian, Jae Hyun Lee, Presnie Lu, Daniel Deng'
+date: ''
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+## Part I
+
+```{r setup, include=FALSE}
+library(glmnet)
+library(knitr)
+library(tidyverse)
+library(BAS)
+library(GGally)
+data(Prostate, package="lasso2")
+Prostate = dplyr::select(Prostate, lcavol, age, lpsa)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+  a. Center the 2 predictors, `age` and `lpsa` and using the centered predictors, fit the four possible models with response `lacvol`.  Make a table with the R2, the number of predictors $p$ (this does not include the intercept),  values of the MLE's under each model,  from the OLS fits.  Verify that the intercept and its standard error is the same in all models.
+```{r lm}
+Prostate_center <- Prostate %>% mutate(age = age-mean(age),lpsa = lpsa-mean(lpsa))
+lm1 <- lm(lcavol ~ 1,data = Prostate_center)
+lm2 <- lm(lcavol ~ age, data = Prostate_center)
+lm3 <- lm(lcavol ~ lpsa, data = Prostate_center)
+lm4 <- lm(lcavol ~ age + lpsa, data = Prostate_center)
+
+extract <- function(lm){
+  model.summary <- summary(lm)
+  result <- list(p = model.summary$df[1] - 1,
+         R2 = model.summary$r.squared,
+         mle = lm$coefficients,
+         intecept.se = model.summary$coefficients[1,2])
+  unlist(result) %>% t() %>%  as.data.frame()
+}
+
+table1 <- sapply(list(lm1=lm1,lm2=lm2,lm3=lm3,lm4=lm4),extract) %>% reduce(full_join) 
+kable(table1, caption = "Linear Model Results",digits=3)
+```
+
+The estimated intercepts for four model are same. But for their standard error is not same. It decreases from null model which has only intercept to full model that has 2 predictor variables.
+    
+    
+  b. For the four models, compute the log Bayes Factor to compare each model to the null model under the g-prior with $g=n$ where
+$$\log BF[M_j : M_0] = \frac{(n - p_j - 1)}{2} \log(1 + g) - \frac{n-1}{2}  \log(1 + g(1 - R^2_{j}))$$
+      
+  for the 4 models (j = 0, 1, 2, 3). Exponentiate to obtain the 4 Bayes Factors and complete the table below
+
+```{r BF,echo=T, results='hide'}
+n = dim(Prostate_center)[1]
+p = table1$p
+R2 = table1$R2
+g = n
+BF = exp((n-p-1)/2*log(1+g)-(n-1)/2*log(1+g*(1-R2)))
+signif(BF,digits = 4)
+```
+
+
+j | $p_j$ | $\gamma_{1j}$ | $\gamma_{2j}$ | $BF[M_j:M_0]$
+--|-------|---------------|---------------|--------------
+0 |    0  |             0 |           0   |  1
+1 |    1  |             1 |           0   |  1.191
+2 |    1  |             0 |           1   |  8.291e+14
+3 |    2  |             1 |           1   |  2.443e+14
+    
+
+
+ c.  Calculate the posterior probabilities of the four models under the uniform prior distribution, 
+$$
+P(M_j \mid Y) = \frac{BF[M_j : M_0] }
+{\sum_{k=0}^3 BF[M_k : M_0] }
+$$     
+```{r post probability}
+P = BF/sum(BF)
+kable(t(P), col.names = c("lm1","lm2","lm3","lm4"), 
+      caption = "Posterior Probabilities of Each Model")
+```
+
+
+
+ d.  Calculate the probability that the coefficient for `lpsa` and `age` are not zero, 
+$$
+\sum_j \gamma_{1j}  P(M_j \mid Y) 
+$$
+
+```{r prob of variables}
+gamma1 <- c(0,1,0,1)
+gamma2 <- c(0,0,1,1)
+p.age <- sum(gamma1*P)
+p.lpsa <- sum(gamma2*P)
+kable(data.frame(age = p.age, lpsa = p.lpsa), 
+      caption = "Probability to Include the Predictors",
+      digits = 3)
+```
+
+
+e.  Calculate the posterior mean for $\beta_{lpsa}$ under the g-prior and model averaging
+$$
+E[\beta_{lpsa} \mid Y ] =  \frac{g}{1 + g} \sum_j \hat{\beta}_{lpsa, M_j} P(M_j \mid Y) 
+$$
+where $\hat{\beta}_{lpsa, M_j}$ is the OLS/MLE estimate from your table above. (Repeat for `age`).
+
+```{r}
+beta.lpsa <- table1$mle.lpsa
+beta.age <- table1$mle.age
+postmean.lpsa <- g/(1+g)*sum(beta.lpsa*P,na.rm=T)
+postmean.age <- g/(1+g)*sum(beta.age*P,na.rm=T)
+kable(cbind(age=postmean.age,lpsa=postmean.lpsa),digits =3, 
+      caption = "Posterior Mean for Beta_lpsa and Beta_age")
+```
+
+
+f.  Confirm your answers using `bas.lm`
+```{r}
+baslm <- bas.lm(lcavol ~ age+lpsa,
+       data = Prostate_center, 
+       prior = "g-prior",
+       alpha = g,
+       modelprior = uniform())
+kable(summary(baslm),digits = 3, caption = "BAS Summary")
+kable(data.frame(t(BF[c(3,4,2,1)]/BF[3])),
+      col.names =  c("Modle 3","Modle 4","Modle 2","Modle 1"),
+      digits = 3, 
+      caption = "Bayes Factors with Model 3 as Baseline")
+```
+
+When we check first column that represent the probability of each variable included in model is same with answer with Q1-d. Moreover, marginal posterior distribution for models are corresponding to answer of Q1-c. We also can find that R-squared for each models are same with answer of Q1-a. Lastly, at first glance, Bayesian Factor seems to be different from above answers. However, if we consider the largest BF as 1 and divide other BF by the largest BF, we can find that they are exactly same.
+
+## Part 2
+Data Description:
+
+Header | Description
+--------------|------------------------------------------------
+chocolate | Does it contain chocolate?
+fruity | Is it fruit flavored?
+caramel | Is there caramel in the candy?
+peanutalmondy | Does it contain peanuts, peanut butter or almonds?
+nougat | Does it contain nougat?
+crispedricewafer | Does it contain crisped rice, wafers, or a cookie component?
+hard | Is it a hard candy?
+bar | Is it a candy bar?
+pluribus | Is it one of many candies in a bag or box?
+sugarpercent | The percentile of sugar it falls under within the data set.
+pricepercent | The unit price percentile compared to the rest of the set.
+winpercent | The overall win percentage according to 269,000 matchups.
+
+
+  a. Explore the association between `winpercent` and the other other variables graphically and comment.
+```{r winpercent vs bin,fig.height= 6,fig.align='center'}
+candy <- read.csv("candy-data.csv",header = TRUE)
+
+candy.bin <- candy %>% dplyr::select(chocolate:pluribus,winpercent) %>% 
+  gather(key = "candy_type", value = value,-winpercent)
+
+ggplot(candy.bin,aes(x = as.factor(value), y = winpercent))+
+  geom_boxplot()+
+  facet_wrap(~candy_type,scales = "free_x")+
+  labs(x = "", title = "Winpercent vs Binary Predictors Boxplots")
+```
+
+When we examine boxplots of predictor variables versus winpercent, most of predictors seems to have linear association with response variable, `winpercent`, because the distribution of winpercent significantly varies according to level of predictors. 
+ 
+```{r winpercent vs cont var,fig.align='center',fig.height = 4}
+candy.cont <- candy %>% dplyr::select(sugarpercent:winpercent) %>% 
+  gather(key = "type", value = value,-winpercent)
+
+ggplot(candy.cont,aes(x = value, y = winpercent))+
+  geom_point()+
+  facet_wrap(~type,scales = "free_x")+
+  labs(x = "", title = "Winpercent vs Continuous Predictors Boxplots")
+```
+
+For continous predictors, it is hard to find any linear association with `winpercent`. 
+ 
+  b. Fit the full model with all predictors (except `competitorname`) and plot residuals versus fitted values.  Comment on whether the model seems appropriate or you need to transform.   Create confidence intervals for all of the coefficients and present in a table sorted by the estimates from high to low.  (present as a nicely formated table).
+```{r full lm}
+lm_full <- lm(winpercent~.-competitorname ,data = candy)
+
+plot(lm_full,which =1)
+
+table2 <- cbind.data.frame(names(lm_full$coefficients),lm_full$coefficients,confint(lm_full)) %>%  
+  `colnames<-` (c("Variable","Beta","Lower_Bound","Upper_Bound")) %>% 
+  arrange(desc(Beta))
+kable(table2, digits = 3, caption = "Confidence intervals for coefficients")
+```
+  
+Model seems to be appropriate because we cannot find any signs of violation such as heterogeneity of variance or nonlinearity.
+    
+  c. Are there any interactions between features that you think might be relevant?   Are there any interactions that you think are not really feasible, hard and nougat?  Fit the model with all possible interactions and comment on the summary.   
+```{r lm with interactions}
+lm_int <- lm(winpercent~(.-competitorname)^2 ,data = candy)
+kable(summary(lm_int)$coefficients,
+      caption="Summary of the Linear Model with All Two-way Interactions")
+kable(summary(lm_int)$r.squared,
+      caption="R2 of the Linear Model with All Two-way Interactions",
+      col.names = "R2")
+```
+
+  Might be relevant: `chocolate` and `peanutyalmondy`, `chocolate` and `caramel`, `fruity` and `hard`, `caramel` and `nougat`, etc.    
+  Not feasible: `nougat` and `hard`, `nougat` and `fruity`, `peanutyalmondy` and `fruity`, maybe `caramel` and `fruity`, `crispdricewafer` and `fruity`.      
+  Summary of model indicates that the model is overfitted because some coefficients are showing considerably large coefficient and standard error which might lead to complete separation. The large number of predictors of model might cause this problem. 
+
+  d.  Using the `step` function with `AIC`  which variables and interactions (you do not need to start with all interactions) are in the best AIC model?  Provide a summary of the final model.
+```{r aic}
+index <- is.na(lm_int$coefficients)
+call <- paste("winpercent~ (.-competitorname)^2",
+              paste(lm_int$coefficients[index] %>% names(),
+                    collapse = "-"), 
+              sep = "-")
+lm_int2 <- lm(call,data=candy)
+lm_AIC <- step(lm_int2, k=2, trace = F)
+## or replace above using
+# lm_AIC <- step(lm_int,k=e, trace = F)
+kable(summary(lm_AIC)$coefficients,
+      caption="Summary of the Best AIC Model with All Two-way Interactions")
+kable(summary(lm_AIC)$r.squared,
+      caption="R2 of the Best AIC Model with All Two-way Interactions",
+      col.names = "R2")
+```
+
+  Even after variable selection, some coefficients of predictors that seems to be unstable are remaining. We can also find that Adjustd R-squared of final model is improved compared to previous model. 
+   
+  e.  Fit the model selected using `AIC` and create confidence intervals for each of the coefficients formated as above.  Do any of the intervals contain zero?   Do any intervals seem poorly estimated based on  modeling winpercent that is between 0 and 100?
+```{r aic confint}
+CI_AIC <- confint(lm_AIC)
+
+contain0 <- function(interval){
+  (interval[,1]<=0) & (interval[,2]>= 0)
+}
+
+table.CI <- data.frame(names(lm_AIC$coefficients),lm_AIC$coefficients,CI_AIC, contain0(CI_AIC)) %>% 
+  `colnames<-`(c("Variable","Beta","LB","UB","Contain_0")) %>% 
+  arrange(desc(Beta)) 
+
+table.CI$Variable <- str_remove_all(table.CI$Variable,"\\(")
+table.CI$Variable <- str_remove_all(table.CI$Variable,"\\)")
+
+kable(table.CI, digits = 3,caption = "95% CI for the coefficients of best AIC model")
+```
+
+The intervals of `nougat`, `nougat:pricepercent`, `nougat:sugarpercent` seems to be estimated poorly considering that winpercent has values between 0 and 100, because estimated intervals for these variables are so large that they can cause predicted values to have values that are not included between 0 and 100. Also, 18 of the confidence intervals contain 0, which indicates that the corresponding main effects and interactions may not be significant.
+
+
+  f. Use BMA to fit a model to explore which features predict `winpercent` (If your team number is less than or equal to 5 use the g-prior with `a=n`. If your team number is greater than 5 use the `prior='JZS'`.   Use `method="MCMC"` and check the diagnostic plots for convergence, rerunning longer if it looks like it has not converged. Provide a summary of the output.  _Handling models that are not full rank (as the full model with all 2 way interactions is experimental in BAS; I suggest starting with the AIC model `formula(candy.AIC)` (see the file candy-EDA.Rmd) or be judicious in terms of choosing interactions to go in based on your subjective information on Halloween candy so that run times are not tooooo long._
+
+```{r bma, cache = T}
+blm.candy <- bas.lm(formula(lm_AIC),
+       prior="g-prior", 
+       modelprior=uniform(),
+       method="MCMC",
+       data = candy,
+       alpha = dim(candy)[1])
+
+beta.blm <- coef(blm.candy)
+kable(cbind(beta.blm$namesx, 
+            beta.blm$postmean %>% round(3),
+            beta.blm$postsd %>% round(digits=3), 
+            beta.blm$probne0 %>% signif(digits = 4)), 
+      col.names = c("variables","post mean","post SD", "post p(B !=0)"),
+      caption = "BMA Model Summary")
+diagnostics(blm.candy)
+```
+ 
+  We can confirm that the model converges because our estimates for posterior inclusion probability and posterior model probability are very simliar with theoretical value.
+    
+  g. Create a plot of the model space and the marginal inclusion probabilities  and  comment. How do these results compare to AIC? 
+```{r, cache = T}
+plot(blm.candy, which = 3)
+plot(blm.candy, which = 4)
+```
+  
+  The plot of model compexity shows the distribution of candidate models. We can find that the model which has six variables has the largest marginal posterior probability. Generally, the marginal posterior probabilities of models having less variables have larger value than models having more variables. As an evidence, we can find negative linear association between Margina posterior distribtuin and model dimension.  
+
+  The plot of posterior inclusion probability shows that predictor variables' average probabilities of being included in models. `Intercept`, `chocolate`, `peanutyalmondy` has nearly 1 probabilities of being included in models and `fruity`, `bar`, `sugarpercent`, `chocolate:peanutyalmondy` has above 0.5 probabilities of being included in models. We also find out that the predictors with high inclusion probabilities are very different from the significant predictors from the AIC model.
+
+    
+  h. Provide a table of estimates of the coefficients and credible intervals (sorted as above) and comment on how they compare to the estimates under the best AIC model. According to your model which features are associated with high overall win percentage?  What features are associated with low overall win percentage?  Which features do not seem to be important? (Be carful with interactions here!)
+_(optional: create plots of the posterior densities of some key variables - are there any bi-modal distributions, if so comment)_    
+```{r}
+beta.blm <- coef(blm.candy)
+table.beta <- confint(beta.blm)
+table.beta <- cbind.data.frame(Variable = rownames(table.beta),
+                               table.beta[,1,drop=F], 
+                               table.beta[,2,drop=F], 
+                               table.beta[,3,drop=F]) %>%
+  `colnames<-`(c("Variable","LB","UB","Beta")) %>% 
+  arrange(desc(Beta))
+kable(table.beta, digits = 3, caption = "Coefficients and Credible intervals of BMA")
+
+comparison <- full_join(table.beta, table.CI, by = "Variable", suffix = c(".bma",".aic"))
+kable(comparison[,-8], digits = 3, 
+      caption = "Coefficients and credible intervals of BMA versus AIC")
+```
+
+Comparing to best AIC model, BMA model has smaller intervals for overall variables. Moreover, coefficients for predictors are also more stable than best AIC model because we cannot find predictors which might cause problem that predicts `winpercent` not included in 0 and 100. 
+
+Features that associated with overall high `winpercent` are `chocolate`,`chocolate:peanutyalmondy`, `crispedricewafer`, `fruity`, `nougat`, `bar`, `sugarpercent`, `peanutyalmondy`. On the contrary, features that associated with overall low `winpercent` are `nougat:sugarpercent`, `chocolate:nougat`, `nougat:sugarpercent`, `crispedricewafer:sugarpercent`, `peanutyalmondy:bar`.
+
+Features seems to be important are `chocolate` and `peanutyalmondy` because they have positive effect on `winpercent` even does their interaction term. 
+
+  i. Which variables are included in the Highest Probability Model, the Median Probability Model and the "Best Probability Model"  How do these campare to the best AIC model?
+```{r}
+#HPM
+HPM = predict(blm.candy, estimator = "HPM")$best.vars
+#MPM
+
+MPM = predict(blm.candy, estimator = "MPM")$best.vars
+
+#BPM
+BPM = predict(blm.candy, estimator = "BPM")$best.vars
+
+max.len = max(length(HPM), length(MPM),length(BPM),
+              length(names(lm_AIC$coefficients)))
+HPM2 = c(HPM, rep(NA, max.len - length(HPM)))
+MPM2 = c(MPM, rep(NA, max.len - length(MPM)))
+BPM2 = c(BPM, rep(NA, max.len - length(BPM)))
+
+kable(data.frame(HPM = HPM2, MPM = MPM2, BPM = BPM2, 
+           AIC = names(lm_AIC$coefficients)),
+      caption = "Variables of Different Models")
+```
+
+From the table above, we can see that HPM included 6 variables, MPM included 7 vairiables, and BPM included 10 variables. All of them have significantly less variables than the AIC model.
+
+  j.  If you were to design a new candy to optimize the winning percent, what features would it have?   Create a prediction interval under BMA  (not selection) for your designer candy and interpret.  
+```{r, cache = T}
+index.bpm <- predict(blm.candy, estimator = "BPM")$best
+kable(data.frame(blm.candy$mle[[index.bpm]]) %>% 
+  `rownames<-`(BPM) %>% 
+  `colnames<-`("coefficients"),
+  digits =3, caption = "Coefficients of BPM"
+  )
+
+newcandy = data.frame(t(rep(0,11))) %>% 
+  `colnames<-`(names(candy[-c(1,13)]))
+newcandy[c("chocolate","fruity","peanutyalmondy",
+           "crispedricewafer","bar","sugarpercent", "pluribus")] <- 1
+BMA = predict(blm.candy, newcandy, estimator = "BMA", se.fit = TRUE)
+BMA.conf.pred = confint(BMA, parm = "pred")
+BMA.conf.pred
+
+BMA2 = predict(blm.candy, candy, estimator = "BMA", se.fit = TRUE)
+BMA.conf.pred2 = confint(BMA2, parm = "pred")
+kable(c(max(BMA.conf.pred2[,3]),candy$winpercent[which.max(BMA.conf.pred2[,3])]) %>% t(), 
+      col.names = c("Predicted Winpercent","Actual Winpercent"),
+      caption = "Highest Predicted Winpercent of the Original Dataset")
+```
+
+We designed our new candy based on the BPM. From the result of the BPM, we noticed that the only negative coefficient is related to peanutyalmondy, however, the interaction between chocolate and peanutyalmondy has a large positive coefficients. Therefore, we still decide to include it. The new candy included chocolate, fruity, peanutyalmondy, crispedricewafer, bar, pluribus , sugarpercent = 1. 
+We then created the prediction interval of our new candy under BMA  and compared the predicted winpercent of the new candy to the original dataset and confirmed that our new candy has higher predicted winpercent than all candies in the dataset.
+
+
+  k.  Use the lasso to fit a model to the `winpercent`.  Comment on which variables it identifies.  How does this compare to the other results?  (what is the optimal combination with the lasso?)  Can you construct a prediction interval for the `winpercent` for this candy?
+```{r}
+set.seed(3)
+x = model.matrix(winpercent ~ (. -competitorname)^2, data = candy)
+y = candy$winpercent
+candy.lasso <- glmnet(x,y,
+                       standardize=TRUE,
+                       alpha = 1)
+plot(candy.lasso)
+
+cv.out=cv.glmnet(x,y,
+                 alpha=1)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+
+lasso.coef = predict(candy.lasso,type="coefficients",s=bestlam)[1:67,]
+lasso.coef[lasso.coef!=0] %>% 
+  kable(caption = "Coefficients of the Lasso Model",
+        col.names = "coefficients",
+        digits = 3)
+```
+
+From the plot and table, we can see that the best model selected by lasso includes 6 variables: chocolate, hard, chocolate:caramel,chocolate:peanutyalmondy, chocolate:sugarpercent, crispedricewafer:bar. The only negative coefficient is related to hard. Therefore, the optimal combination with lasso should be chocolate + crispedricewafer + peanutyalmondy + caramel + bar. Sugarpercent should be high, and we set it to be 1.
+
+```{r, cache = TRUE}
+#Define rmse
+rmse = function(ypred, ytest) {
+  sqrt(mean((ypred-ytest)^2))
+}
+
+newcandy2 = data.frame(t(rep(0,11))) %>% 
+  `colnames<-`(names(candy[-c(1,13)]))
+newcandy2[c("chocolate","peanutyalmondy",
+           "crispedricewafer","caramel","bar","sugarpercent")] <- 1
+
+# assign a number to winpercent so that model.matrix can run
+# the value itself will not be used
+newcandy2["winpercent"] <- 0.5 
+newcandyx <- model.matrix(winpercent ~ (.)^2-1, data = newcandy2)
+
+prediction2 <- function(){
+  sample.index <- sample(1:nrow(candy),size = nrow(candy), replace = TRUE)
+  samp <- candy[sample.index,]
+  model <- lm(winpercent ~ chocolate + hard + chocolate:caramel 
+              + chocolate:peanutyalmondy+ chocolate:sugarpercent
+              + crispedricewafer:bar, data = samp)
+  predict(model, newdata = newcandy2)
+}
+
+
+pred = rep(0,1000)
+for (i in 1:1000){
+  pred[i] <- prediction2()
+}
+
+
+lasso.pred=predict(candy.lasso,
+                   newx= x,
+                   s=bestlam)  # s = lambda
+rmse.train = rmse(lasso.pred, y)
+
+confint <- quantile(pred,probs = c(0.025,0.975))
+predint <- c(confint[1]-1.96*rmse.train,confint[2]+1.96*rmse.train)
+kable(predint %>% t(),digits = 3,
+      caption = "Prediction Interval of the New Candy")
+```
+
+The prediction interval for the `winpercent` of our new candy is (52.174,125.746). The interval is relatively wide and exceeds the highest possible value 100. However, this interval also indicates that our new candy has a high predicted winpercent.
+
+
+  l. Summarize your modeling efforts in a couple of paragraphs suitable for readers of 538, providing interpretation of coefficients and the interactions on how the they impact the winning percent and details about your optimal candy.  (see the 538 blog linked above for inspiration!)  
+  
+  In this project, we used several different modeling methods to evaluate what combination of features of a candy will be able to make it more desirable. We first tried the simple linear regression model with interactions that are selected with AIC criterion. For the final model selected from AIC, we found that `nougat`, `crispedricewafer`, `caramel:nougat`, `sugarpercent:pricepercent`, `chocolate:peanutyalmondy` have coefficient intervals that do not include 0. This means we are 95% confident that these features have positive effect on win percent. Considering the fact even for some interaction term like `sugarpercent:pricepercent`, coefficient of `pricepercent` is negative, the absolute value is smaller than the interaction term, which can still be consider a desirable feature. However, since some of the coefficients are too big such that for adding this feature to the candy, we will have a huge increase of winpercent that exceeds the range of (0,100). Thus, this indicates that the model provides a relatively poor estimate for certain feature.      
+
+Then, we moved to the Bayesian models, which have generally smaller intervals for variables. Using Best Probability Model, we eventually decided on what combination of features will be desirable. We observed only one variable with negative coefficient in this model. However, with the combination of other features, we can see that adding this feature to the candy will have an increase of $-4.394+16.541+1.394=13.541$ on `winpercent`. All other variables have positive coefficient, which means adding these features can lead to `higher winpercent`.  To be more specific, we can see from the summary table that adding fruity flavor with all other variables fixed will increase the winpercent by 5.957 percentage. Similarly for other features in this model. So, we eventually decided that candies that contains chocolate, peanuts, peanut butter or almonds, crisped rice, wafers, or a cookie component , higher sugar percentile and they are fruity favored, form as a candy bar and present as one of many candies in bag or box are generally more desirable.      
+
+Lastly, we selected our model using lasso method. The lasso model suggests that the overall win percentage is significantly influenced by `chocolate`, `hard`, and interaction terms `chocolate:caramel`, `chocolate:peanutyalmondy`, `chocolate:sugarpercent`, `crispedricewafer:bar`. A more detailed explanation corresponds to the table of the lasso model could be: Holding all other variables constant,       
+If a candy contain chocolate, the overall win percentage of the candy will increase by 6.004%.    
+If a candy is hard,  the overall win percentage of the candy will decrease by 0.613%.     
+If a candy contains both chocolate and caramel, the wining percentage will increase by 0.547%.     
+If a candy contains both chocolate and peanuts/peanut butter/almonds, the wining percentage will increase by 8.101%.     
+If the sugarpercent increase by 10%, the wining percentage of a candy with chocolate will be 1.0884% higher than that of a candy without chocolate.     
+If a candy contains chrisped rice/wafers/cookie component and it is a candy bar, the wining percentage will increase by 6.5%.     
+Based on this information, we designed another new candy, which contains chocolate, crisped rice/wafers/cookie component, peanuts/peanut butter/almonds, caramel and formed it as a candy bar. Our predicted winning percentage of this candy will between 52.174 and 125.746. Since a winning percentage of 125.746 is not possible, we can treat it as (52.134,100). In general, we are 95% confident that this candy will have an overall win percentage above 52.134%.
+  

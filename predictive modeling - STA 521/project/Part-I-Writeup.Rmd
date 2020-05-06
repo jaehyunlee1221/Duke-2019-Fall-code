@@ -1,0 +1,273 @@
+---
+title: "Part-I-Writeup"
+author: "Team 9"
+date: "12/2/2019"
+output: 
+  pdf_document:
+  header-includes:
+    \usepackage{float}
+    \floatplacement{figure}{H}
+    \floatplacement{table}{H}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(mice)
+library(knitr)
+library(ggplot2)
+library(GGally)
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+## Introduction
+
+As the second largest city in Europe and the center of art in 18th century, Paris witnessed a lot of auctions on paintings. The most important aspect that all people in auctions would consider is the price. Then the question aries:  What could drive the prices of paintings? This project aims to find out what factors could affect the price of paintings in 18th century Paris by using the dataset containing 1500 records with auction price data from 1764-1780 on the sales, painters and other characterisitcs of paintings. 
+
+Before we start analyzing, we first clean the dataset and impute missing values for several variables by assuming missing completely at random and using "Mice" package that would assign values of missing cells based on existing data. To conduct the analysis, we use the simple linear model. We take the logarithm of prices of each painting and set it as the response variable in the model. We apply exploratory data analysis by drawing scatterplots and boxplots to find out what variables might be related with the price and put them in the model as predictors. To find out our final model, we set our initial model to contain all selected predictors with all possible two-way interactions. Then we use BIC (Bayesian Information Criterion) to conduct model selection and build a parsimonious model with predictors and interactions that has good performance in terms of RMSE(root mean squared error) and coverage etc.. Predictors and interactions in this final model would give us information about which features or combinations of features would influence the price of paintings so that people could find the most valuable paintings. 
+
+
+## Exploratory Data Analysis
+
+```{r read-data, echo = F}
+load("paintings_train.Rdata")
+load("paintings_test.Rdata")
+```
+
+We first checked how many predictors in the original data have missing data. We noticed that `type_intermed`, `Diam_in`, `Surface_Rnd` and `authorstyle` are largely missing, and therefore excluded these predictors from model building. We noticed that many variables have missing or unknown values, and used `mice` to impute the missing values based on the values of the other variables. The following exploratory data analysis is based on the imputed training data set.
+
+```{r check-na, include = F}
+# check missing values
+apply(paintings_train, 2, function(col) { length(which(col %in% c(""," ", NA, "n/a", "-"))) })
+```
+
+```{r clean-up, echo = F}
+paintings_train$material <- str_remove_all(paintings_train$material, "\\s.*")
+paintings_train$material <- str_remove_all(paintings_train$material, "\\;")
+paintings_test$material <- str_remove_all(paintings_test$material, "\\s.*")
+paintings_test$material <- str_remove_all(paintings_test$material, "\\;")
+
+# mutate data type and remove predictors which have too many NA's
+paintings_train <- paintings_train %>% 
+  mutate_each(function(x){ifelse(x %in% c(""," ", NA, "n/a", "-"), NA, x)})%>% 
+  mutate_at(vars(c(dealer, origin_author:diff_origin, winningbiddertype:type_intermed, 
+                   material:materialCat, Shape, engraved:other, artistliving)), as.factor) %>%
+  select(-c(Diam_in, Surface_Rnd, type_intermed, authorstyle))
+
+paintings_test <- paintings_test %>% 
+  mutate_each(function(x){ifelse(x %in% c(""," ",NA,"n/a","-"),NA,x)})%>% 
+  mutate_at(vars(c(dealer,origin_author:diff_origin,winningbiddertype:type_intermed,material:materialCat,Shape,
+                   engraved:other,artistliving)),as.factor) %>%
+  select(-c(Diam_in, Surface_Rnd, type_intermed, authorstyle))
+
+#choose available variables
+paintings_train_can <- paintings_train %>% 
+  select(-c(sale,lot,subject,authorstandard,author,winningbidder))
+paintings_test_can <- paintings_test %>% 
+  select(-c(sale,lot,subject,authorstandard,author,winningbidder,logprice,price))
+```
+
+```{r impute, echo = F, message = F, warning = F, results='hide'}
+#imputation
+paintings_train_imputed <- mice(paintings_train_can, m = 5, nnet.MaxNWts = 10000, seed = 9)
+paintings_train_imputed <- complete(paintings_train_imputed, action = 4) %>% 
+  mutate(origin_author = relevel(fct_collapse(origin_author, O = c("A","G","X")),ref = "O")) %>% 
+  mutate(winningbiddertype = relevel(fct_collapse(winningbiddertype, B = c("BB","B","BC"), 
+                                                  D = c("D","DB","DC","DD"),E = c("E","EB","EBC","EC","ED"), 
+                                                  U = c("U",NA)),ref = "U"))
+```
+
+To identify the best variables for predicting `logprice`, we want to examine the relationships between `logprice` and the other variables. Since there are too many predictors, we look at quantitative, binary and qualitative predictors separately. We first create a scatterplot matrix for the quantitative predictors. We noticed that `position` is in percentage, but some of the paintings have values larger than 1, suggesting that these were recorded wrong. The above plot also shows that, `Height_in`, `Width_in`, `Surface_Rect`, and `Surface` need transformation, since their distributions are skewed. 
+
+```{r numeric-eda, echo = F, message = F, warning = F, fig.width=6, fig.height=4, fig.pos="H"}
+paintings_numeric <- paintings_train_imputed %>% select_if(is.numeric) 
+
+p_numeric <- ggpairs(paintings_numeric,
+             upper = list(continuous = wrap("points", size = 0.1, alpha = 0.5)),
+             lower = list(combo = wrap("facethist", binwidth = 100)),
+             progress = F)
+temp <- lapply(c(1:p_numeric$ncol)[-3], function(i) getPlot(p_numeric, 3, i))
+ggpubr::ggarrange(plotlist = temp) %>% 
+  ggpubr::annotate_figure(top = "Relationship between logprice and quantitative predictors")
+```
+
+After log-transformation of these quantitative predictors, we obtained the following scatterplot matrix: 
+
+```{r log-eda, echo = F, message = F, warning = F, fig.width=6, fig.height=3, fig.pos="H"}
+paintings_log_numeric <- paintings_train_imputed %>% 
+  select(c(Height_in, Width_in, Surface_Rect, Surface)) %>% 
+  mutate_all(log) %>% 
+  cbind(logprice = paintings_train$logprice)
+
+p_log_numeric <- ggpairs(paintings_log_numeric,
+             upper = list(continuous = wrap("points", size = 0.1, alpha = 0.5)),
+             lower = list(combo = wrap("facethist", binwidth = 100)),
+             progress = F)
+temp <- lapply(c(1:p_log_numeric$ncol)[-5], function(i) getPlot(p_log_numeric, 5, i))
+ggpubr::ggarrange(plotlist = temp) %>% 
+  ggpubr::annotate_figure(top = "Relationship between logprice and log-transformed quantitative predictors")
+```
+
+We decided to use `Surface` in our model, because we suspect that paintings with large surface area would be sold at a higher prices. We also wanted to use `year` as a predictor, since the plot shows that `logprice` fluctuates with `year`.
+    
+The following is a scatterplot matrix for the binary variables in the data set. The plot shows that we might be able to predict `logprice` based on the variables `diff_origin`, `engraved`, `prevcoll`, `finished`, `lrgfont` and `still_life`, since the difference in `logprice` is large for different levels of the binary variables:
+
+
+```{r binary-eda, echo = F, fig.width=7, fig.height=4, fig.pos="H"}
+paintings_binary <- paintings_train_imputed %>%
+  select(logprice, diff_origin, artistliving, Interm, engraved, original, prevcoll,
+         othartist, paired, figures, finished, lrgfont, relig, landsALL, lands_sc,
+         lands_elem, lands_figs, lands_ment, mytho, peasant, othgenre, singlefig, portrait, other)
+
+p_binary <- ggpairs(paintings_binary,
+             upper = list(continuous = wrap("box_no_facet", size = 0.5, alpha = 0.5)),
+             lower = list(combo = wrap("facethist", binwidth = 100)),
+             progress = F)
+temp <- lapply(c(1:p_binary$ncol)[-1], function(i) getPlot(p_binary, 1, i))
+ggpubr::ggarrange(plotlist = temp[1:12]) %>% 
+  ggpubr::annotate_figure(top = "Relationship btw logprice and binary predictors")
+ggpubr::ggarrange(plotlist = temp[13:23])
+```
+
+The scatterplot matrix between `logprice` and qualitative variables with fewer categories suggest that we could consider `dealer`, `origin_author` to predict `logprice`.
+
+```{r factor-eda1, echo = F, fig.width=6, fig.height=3, fig.pos="H"}
+paintings_few_factor <- paintings_train_imputed %>% 
+  select(logprice, dealer, origin_author, origin_cat, school_pntg, endbuyer, materialCat)
+
+p_few_factor <- ggpairs(paintings_few_factor,
+             upper = list(continuous = wrap("box_no_facet", size = 0.5, alpha = 0.5)),
+             lower = list(combo = wrap("facethist", binwidth = 100)),
+             progress = F)
+temp <- lapply(c(1:p_few_factor$ncol)[-1], function(i) getPlot(p_few_factor, 1, i))
+ggpubr::ggarrange(plotlist = temp) %>% 
+  ggpubr::annotate_figure(top = "Relationship btw logprice and qualititave predictors with fewer categories")
+```
+
+We further plotted `logprice` v.s. the other qualitative predictors with more categories as shown below. Notice that some factor levels have too few observations, and thus these variables might not be helpful in predicting `logprice`.
+
+```{r factor-eda2, echo = F, message = F, warning = F, fig.width=6, fig.height=3, fig.pos="H"}
+paintings_more_factor <- paintings_train_imputed %>%
+  select(logprice, mat, material, Shape, winningbiddertype)
+
+p_more_factor <- ggpairs(paintings_more_factor,
+             upper = list(continuous = wrap("box_no_facet", size = 0.5, alpha = 0.5)),
+             lower = list(combo = wrap("facethist", binwidth = 100)),
+             cardinality_threshold = 28,
+             progress = F) +
+              theme(axis.text.x = element_blank())
+temp <- lapply(c(1:p_more_factor$ncol)[-1], function(i) getPlot(p_more_factor, 1, i))
+ggpubr::ggarrange(plotlist = temp) %>% 
+  ggpubr::annotate_figure(top = "Relationship btw logprice and qualititave predictors with more categories") 
+```
+
+Beyond what plotted above, there are some variables, such as `lot`, `authorstandard`, `winningbidder`, whose relationships to `logprice` are hard to visualize because they contain too many categories. We decided not to use them from our initial model building. Based on the EDA, we selected the 10 best variables for predicting `logprice`:  
+  - Numerical: `Surface`, `year`  
+  - Binary: `diff_origin`, `engraved`, `prevcoll`, `finished`, `lrgfont`, `still_life`  
+  - Other qualitative: `dealer`, `origin_author`
+
+```{r train_fin, echo = F}
+#choosen dataset based on EDA
+paintings_train_fin <- paintings_train_imputed %>% 
+  select(logprice, dealer, diff_origin, origin_author, engraved, prevcoll, finished,
+        lrgfont, still_life, Surface, year) %>% 
+  mutate(Surface = log(Surface + .1))
+```
+
+
+## Development and assessment of an initial model
+
+##### Initial Model
+
+We separated all predicotrs into three categories:numerical, binary and multi-level categorical variables. From the above EDA, we chose two numerical variables:`surface` and `year`, six binary variables: `diff-origin`, `prevcoll`, `engraved`, `lrgfont`, `finished` and `still-life`, and two multi-level categorical variables:`dealer` and `origin_author`.
+
+For numerical variables, from the scatterplot we produced above, we noticed a fluctuated trend between year and logprice. This means that different `year` values would influence the log price of the painting. Although, the correlation between all numerical variables and `logprice` are small, we decided to include the variable `surface`. Since `surface` automatically includes the information from `Height_in`, `Width_in` and `Surface_Rect` and it intuitively makes senes that the size of the painting might effect the log price of the painting. 
+
+For categorical variables, we looked at their boxplot against the predictor `logprice` and selected according to their influence level. All those eight variables we selected indicited that the log price of the painting do differ for each levels.
+
+Then, we used all those 10 variables and all possible two-way interactions to predict `logprice` as our initial model.
+
+The summary of the model is the following: 
+```{r echo=FALSE}
+full_model <- lm(logprice ~ .^2, data = paintings_train_fin)
+summary(full_model)
+```
+
+Since the R-squared is 0.6172, our initial model explained about 61% of the variation in the response variable around its mean.
+
+##### Model Selection
+
+By looking at the summary table for the initial model, a large proportion of the variables are not significant and some predictors showing NAs. Therefore, we need to operate model selection. For linear regression models, we have two criterias for model selection: Akaike Infromation Criterion (AIC) and the Bayes Information Criteria (BIC). Out of those two methods, we chose to use BIC as our selection criteria. The BIC criteria pick the model that has the highest posterior probability. Although, the model might not necessarily be the best predictive model, it is most likely to be true given the data.
+
+```{r echo=FALSE}
+fin_model <- step(full_model, trace = F, k = log(nrow(paintings_train_fin)))
+```
+
+As a result, the model selected by the BIC kept all 10 variables and added 4 two-way interactions. 
+
+##### Residual plots
+
+```{r, echo=FALSE}
+par(mfrow = c(2, 2))
+plot(fin_model)
+```
+
+From the above four plots, we can see that our model selected by the BIC criteria performed well. From the residuals plot on the top-left, all residuals are equally spread out indicates linearity. Also, from the normal Q-Q plot we can see that all residuals are perfectly followed a straight line indicates normality. The scale-location plot shows that the residuals are spread equally along the ranges of predicotrs indicated equal variance. Lastly, there are no actually influential points but just a few potential outliers.
+
+##### Summary 
+
+```{r, warning=FALSE, echo=FALSE}
+model1_table = cbind(exp(fin_model$coefficients), exp(confint.default(fin_model)))
+colnames(model1_table)[1] = "Coefficients"
+kable(round(model1_table, 2), caption = "Coefficients and 95% Confidence Intervals (Relative Risk")
+```
+
+From the above table, most of the confidence intervals does not contain 0. This means that the overall performance of our BIC selected model is doing pretty good.
+
+```{r test, echo = F, message = F, warning = F, results='hide'}
+# imputation
+paintings_test_imput <- mice(paintings_test_can, m = 5, nnet.MaxNWts = 10000, seed = 9)
+paintings_test_imputed <- complete(paintings_test_imput, action = 4) %>%
+  mutate(origin_author = relevel(fct_collapse(origin_author, O = c("A","G","X")),ref = "O")) %>%
+  mutate(winningbiddertype = relevel(fct_collapse(winningbiddertype, B = c("BB","B","BC"),
+                                                  D = c("D","DB","DC","DD"),E = c("E","EB","EBC","EC","ED"),
+                                                  U = c("U",NA)),ref = "U"))
+# Prediction
+paintings_test_fin <- paintings_test_imputed %>% 
+  cbind(logprice = paintings_test$logprice) %>% 
+  select(logprice, dealer, diff_origin, origin_author, engraved, prevcoll, finished,
+        lrgfont, still_life, Surface, year) %>% 
+  mutate(Surface = log(Surface + .1))
+predictions = as.data.frame(
+  exp(predict(fin_model, newdata=paintings_test_fin, 
+              interval = "pred")))
+save(predictions, file="predict-test.Rdata")
+```
+
+
+## Summary and Conclusions
+
+Based on the model results, there're several categorical variables. The "baseline" category of a painting is when the painting is auctioned by dealer "J"; the origin of the painting based on nationality of the author is the same as the origin of painting based on dealers' classification in the catelogue; the origin of the painting based on nationality of artist is others; the dealer doesn't mention engravings done after the painting; the previous owner is not mentioned; the painting is not finished; the dealer doesn't devote an additional paragraph; and the description doesn't indicate still life elements. 
+
+The median price with the interval for the "baseline" painting is:
+
+```{r, echo = F}
+# Find the median price
+prediction <- data.frame(logprice = NA, dealer = "J", diff_origin = 0, origin_author = "O", engraved = 0, 
+                         prevcoll = 0, finished = 0, lrgfont = 0, still_life = 0, 
+                         Surface = mean(paintings_train_fin$Surface),
+                         year = mean(paintings_train_imputed$year)) %>% 
+  mutate_at(vars(dealer, diff_origin, origin_author, engraved, prevcoll, finished, lrgfont, still_life),as.factor)
+
+kable(exp(predict(fin_model, newdata = prediction, interval = "pred")), caption = "Price for the baseline category")
+```
+
+We find that the price is 12.05 livres. We're 95% confident that the true price will be in between 1.02 livres to 142.30 livres. 
+
+According to the model results, p values for some interactions are very small, indicating they are statistically significant and thus important. It's found that dealer L would affect the price of the painting. When the origin of the painting based on nationality of the author is the same as the origin of painting based on dealers' classification in the catelogue, dealer L could make the price of paintings increase multiplicatively by 2.66, with a 95% confidence interval from 1.94 to 3.64. When the dealer is dealer J, when the description doesn't indicate still life elements, and when the surface area is 1 sqrt inch, the price of the painting when the origin based on author is different from the origin based on dealers' classification would be 2.89 * 0.86 = 2.45 (range from 1.18 to 5.16) times the price of the painting when two origins are the same, holding others constant. If the author's nationality is Dutch or Flemish, the price would be 2.44  (range from 1.80 to 3.29) times the price if the nationality is others, holding other variables constant. Similarly, if the author is from Spain, the price would be 3 (range from 1.35 to 6.69) times the price if not. Moreover, engravtion would make the price increase multiplicatively by 2.36 (range from 1.75 to 3.18); When the painting is not finished, and when the previous owner is mentioned, the price would be 3.16 (range from 2.25 to 4.44) times the price if the previous owner is not mentioned. When the previous owner is not mentioned and the painting is finished, then the price would be 2.80 (range from 2.31 to 3.39) times the price if not. If the dealer devotes an additional paragraph, then the price would multiplivatively increase by 3.55 (range from 2.80 to 4.51). Finally, when the origin based on author is the same as the origin based on dealers' classification, as the surface of paintings increase by 1 squared inch, the price increase multiplicatively by 1.32 with a confidence interval from 1.25 to 1.39. If the year of sale is one more year later, the price could also increse multiplicatively by 1.15, with an interval ranging from 1.13 to 1.17.
+
+Although the model does provide important variables that could affect the price of paintings. There're still several limitations. First of all, we select variables based on the exploratory data analysis. There could be some important variables that we do not choose which might be more related with the log price. In addition, we only consider two-way interactions between predictors. There could be some three-way interactions that are statistically significant. Moreover, the true relationship between log price and predictors might not be linear. Thus, in this case, it's impossible to build a OLS model with good performance. 
+
+In conclusion, we suggest that it's better to have dealer L to help with the auction. This positive effect is even stronger when the origin of the painting based on nationality of the author is the same as the origin of painting based on dealers' classification in the catelogue. If the author is from Dutch, Flemish, or Spain, the price of painting would be higher. Engravtion and the mention of the previous owner would both positively contribute to the increase of the price. If the dealer devotes more paragraphs to the painting, it would worth more. Finally, the art historian should look for a painting with as large surface area as possible. It's also better to have a painting that the year of sale is later rather than earlier.
+
+

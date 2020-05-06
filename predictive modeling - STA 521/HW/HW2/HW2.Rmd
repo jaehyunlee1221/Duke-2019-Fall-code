@@ -1,0 +1,313 @@
+---
+title: "HW2 STA521"
+author: '[Jae Hyun Lee, jl914, jaehyunlee1221]'
+date: "Due September 12, 2019 10am"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+## Exploratory Data Analysis
+
+
+```{r data}
+library(alr3)
+data(UN3, package="alr3")
+#help(UN3) 
+library(car)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(GGally)
+```
+
+
+1. Create a summary of the data.  How many variables have missing data?  Which are quantitative and which are qualtitative?
+
+```{r Q1}
+str(UN3)
+smry_UN3 <- summary(UN3)
+smry_UN3
+na_count <- smry_UN3[7,]
+na_count
+```
+As we can see in outlook of data.frame UN3, there are all quantative variables. Except for variable named Purban, those of variables including ModernC, Change, PPgdp, Frate, Pop, Fertility have at least one missing data. 
+
+2. What is the mean and standard deviation of each quantitative predictor?  Provide in a nicely formatted table.
+
+```{r Q2}
+mn_st_table <- matrix(rep(0,3*length(UN3)),nrow = length(UN3))
+for(i in 1:length(UN3)){
+  mn_st_table[i,] <- c(colnames(UN3)[i],
+                       round(mean(UN3[,i],na.rm = T),3),
+                       round(sd(UN3[,i],na.rm=T),3))
+}
+rownames(mn_st_table) <- 1:length(UN3)
+colnames(mn_st_table) <- c("variable","mean","stand deviation")
+kable(mn_st_table)
+```
+
+
+3. Investigate the predictors graphically, using scatterplots or other tools of your choice. Create some plots
+highlighting the relationships among the predictors. Comment
+on your findings regarding trying to predict `ModernC` from the other variables.  Are there potential outliers, nonlinear relationships or transformations that appear to be needed based on your graphical EDA?
+
+```{r Q3, fig.width=3.0 ,fig.height=2.25}
+for(i in 1:length(UN3)){
+  print(ggplot(data=UN3, mapping=aes(x=1:nrow(UN3),y=UN3[,i]))+
+         geom_point()+
+         geom_hline(yintercept = mean(UN3[,i],na.rm = T),color="red")+
+         ylab(colnames(UN3)[i]) + xlab("index")+
+         labs(title=paste("distribution of",colnames(UN3[i])),
+              caption = paste("fig ",i,if(i==3) {
+                ". distribution is right skewed"
+              } else if(i==5){
+                ". There are potentially influential points"
+              } else ". randomly distributed")))
+         
+}
+```
+
+When we inspect scatterplots of predictors, most of them are distributed randomly from their mean. But in case of PPgdp, they are skewed right. Thus I think it needs to be transformed. Furthemore, Pop seems to have some potential outliers. Therefore, we should be cautious dealing with Pop variable.
+
+
+```{r Q3_2, fig.width=4.8,fig.height=3.6}
+ggpairs(UN3) +
+  labs(title = "pairwise relationship of predictor",
+       caption = "fig7. ModernC has relationships with change,PPgdp,Fertility,Purban")
+ggpairs(UN3[,c(1,2,3,6,7)]) + 
+  labs(title = "ModernC's relationship with predictors",
+       caption = "fig8. ModernC has nonlinear relationship with PPgdp")
+```
+
+
+When I see pairwise plot among predictor variables, I can find that ModernC has quite strong relationship with variables named change,PPgdp,Fertility,Purban.Three of them have linear relationship with ModernC. But PPgdp seems to have non-linear relationship with ModernC. I think this phenomenom stem from skewness of PPgdp. Thus I should recheck after taking transformation on PPgdp. And I also find that there are potential influential point at correlation plot between Pop and ModernC.
+
+
+## Model Fitting
+
+4.  Use the `lm()` function to perform a multiple linear regression with `ModernC` as the response and all other variables as the predictors, using the formula `ModernC ~ .`, where the `.` includes all remaining variables in the dataframe.  Create  diagnostic residual plot from the linear model object and comment on results regarding assumptions.  How many observations are used in your model fitting?
+
+```{r Q4}
+Fm <- lm(ModernC~.,data = UN3)
+par(mfrow=c(2,2))
+plot(Fm, 
+     sub.caption = "fig9. potentially influential point detected at leverage plot")
+summary(Fm)
+```
+When it comes to residual vs fitted value plot, there isn't any violation sign such as non-linear relationship between them. However, although it it not severe, I can find out normality assumption is violated at margin of normal q-qplot. In scale-location plot, they are forming fan shape distribution which indicate heterogenuity in variance. But degree of heterogeuity seems not to be severe. Thus there is no strong evidence that homongenuity assumption is violated. But in leverage vs residual plot, there are some potential influencial point. Therefore we should pay attention to those observation. In model fitting, 125 observations are used and 85 observations are omitted because of their missingness.
+
+
+5. Examine added variable plots `car::avPlot` or `car::avPlots`  for your model above. Are there any plots that suggest that transformations are needed for any of the terms in the model? Describe. Is it likely that any of the localities are influential for any of the terms?  Which localities?  Which terms?  
+
+```{r Q5}
+avPlots(Fm)
+```
+
+Among these variables, there are two variables, PPgdp, Pop, which need to be transformed. As mentioned before, PPgdp is right skewed and Pop has potentially influential points which are China and India. 
+
+6.  Using the multivariate BoxCox `car::powerTransform` or  Box-Tidwell  `car::boxTidwell` find appropriate transformations of the predictor variables  to be used as predictors in the linear model.  If any predictors are negative, you may need to transform so that they are non-negative.  Describe your method and  the resulting transformations.
+
+
+```{r Q6}
+summary(UN3)
+UN <-UN3 %>%
+      mutate(Change_add = Change+1.2) %>%
+      select(ModernC,Change_add,PPgdp,Frate,Pop,Fertility,Purban)
+powerTransform(UN,family="bcPower")
+```
+
+Checking summary of UN3, I can find out that Change variable has minimum negative value -1.1. Thus I decide to add 1.2 on Change. 
+Since ModernC, Frate, Purban, Change_add have optimal value for lamda which is approximately 1, they don't need to be transformed. However, in the case of Pop, PPgdp, and Fertility, they have optimal value for lamda which is approximately 0. Thus they are required to be log transformed.
+
+7. Given the selected transformations of the predictors, select a transformation of the response using `MASS::boxcox` or `car::boxCox` and justify.  Do you need to do this if you used `car::powerTransform` above?  Explain.
+
+
+```{r Q7,fig.width=4.2, fig.height=2.7}
+boxCox(lm(ModernC~.,data=UN))
+```
+
+As we can see at above plot, value 1 is included in 95% confidence interval of lambda which is same result from Q6. Thus we don't need to transform.  However, even though we have checked through 'powerTransform' function, we should check again with boxcox function for potential disctintion between results.
+```{r Q7_2,fig.width=4.2, fig.height=2.7}
+boxCox(lm(PPgdp~.,data=UN))
+boxCox(lm(Pop~.,data=UN))
+boxCox(lm(Fertility~.,data=UN))
+```
+The terms which were considered to be transformed also are showing same result that we get at previous Question.
+
+8.  Fit the regression using the transformed variables.  Provide residual plots and added variables plots and comment.  If you feel that you need additional transformations of either the response or predictors, repeat any steps until you feel satisfied.
+
+```{r Q8}
+library(dplyr)
+UN2 <- UN %>%
+  mutate(logPPgdp = log(PPgdp),
+         logPop = log(Pop),
+         logFertility = log(Fertility))  %>%
+  select(ModernC,Change_add,logPPgdp,Frate,logPop,logFertility,Purban)
+
+Cm <- lm(ModernC~.,data=UN2)
+par(mfrow=c(2,2))
+plot(Cm, 
+     sub = "fig10. every plot don't show any violation of assumption")
+
+avPlots(Cm)
+```
+In both diagnostic plot and added variable plots, I cannot find severe violation of assumption. The problems we could find in previous models are improved.
+
+9.  Are there any outliers or influential points in the data?  Explain.  If so, refit the model after removing any outliers/influential points and comment on residual plots.
+
+
+```{r Q9}
+abs.ti <- abs(rstudent(Cm))
+pval <- 2*(1-pt(abs.ti, Cm$df -1))
+min(pval) < .05/(Cm$df + ncol(UN))
+
+any(cooks.distance(Cm)>0.5)
+```
+
+When executing outlier test with Bonferonni correction, I cannot find any outliers. Even though there are some suspects for outlier, their leverage changed after taking power transform. Test through cook's distance also show same result.
+
+
+## Summary of Results
+
+10. For your final model, provide summaries of coefficients with 95% confidence intervals in a nice table with interpretations of each coefficient.  These should be in terms of the original units! 
+
+final model is as below,
+$$
+ModernC = \beta_0 + \beta_1Changeadd+\beta_2 logPPgdp + \beta_3 Frate + \beta_4 logPop + \beta_5 logFertility + \beta_6 Purban
+$$
+
+```{r Q10}
+sum_Cm <- cbind(summary(Cm)$coefficient[,1],
+                confint(Cm,c('(Intercept)',colnames(UN2)[-1]),level = 0.95))
+sum_Cm <- round(sum_Cm,3)
+interpret <- vector()
+sum_Cm[,1]<0
+for(i in 1:nrow(sum_Cm)){
+  if(i == 1){
+    interpret[i] <- "When predictor variables are 0, ModernC has -17.879 on average"
+  }else if(i %in% c(2,4,7)){
+    interpret[i] <- paste("Increase in 1 unit of",
+                          colnames(UN)[i],"makes change",
+                          sum_Cm[i,1],"unit of ModernC on average")
+  }else {
+    interpret[i] <- paste("Increase in 10% of",
+                          colnames(UN)[i],"makes change",
+                          round(1.1^sum_Cm[i,1]-1,3),"% of ModernC on average")
+  }
+}
+colnames(sum_Cm) <- c("coefficient","2.5%","97.5%")
+names(interpret) <- rownames(sum_Cm)
+kable(sum_Cm)
+kable(interpret)
+```
+
+Every interpretation assumes that other predictors are remain constant. Moreover, % changes are calculated by $1.1^{\beta_i}-1$
+
+11. Provide a paragraph summarizing your final model  and findings suitable for the US envoy to the UN after adjusting for outliers or influential points. You should provide a justification for any case deletions in your final model.
+
+
+```{r}
+any(cooks.distance(Cm)>1)
+summary(Cm)
+```
+Final model is as below:
+
+$$
+ModernC = -17.88 + 2.31Changeadd + 6.44logPPgdp + 0.18 Frate + 1.6logPop  -18.23 logFertility - 0.007 Purban
+$$
+
+As we can see summary of final model, using predictors Change_add, logPPgdp, Frate, logPop, logFertility, Purban, my model explain 56% of variation in ModernC. Among 210 observations, only 125 observations are used to construct model because of some observations' missingness. On the course of EDA, I detected some potentially influential points(China and India) at Pop variable but after taking log transformation, their influence was reduce. Although there is remaining risk to includes that observations, but It would be better to include them rather than excluding them because it can contain some important information. A result of model shows some interesting discovery. We could find strong evidence that Women who have more average income or participate economical activity much tend to careful about preganancy using modern method of contraception. It might stem from social environment or their mind about pregnancy. On the other hand, understandably, as proportion of women who use modern contraception methods grows, national fertility decreases. 
+
+## Methodology
+
+    
+12. Prove that the intercept in the added variable scatter plot will always be zero.  _Hint:  use the fact that if $H$ is the projection matrix for $X$ which contains a column of ones, then $1_n^T (I - H) = 0$ or $(I - H) 1_n = 0$.  Use this to show that the sample mean of residuals will always be zero if there is an intercept._
+
+answer: Added scatter plot draw linear relationship of model: $e_{Y}=\beta_{0}+\beta_{p}e_{x_{p}}$.
+$X^{*}$ is set of predictors except pth variable $x_{p}$
+where $e_{Y}$ is residual of fitted model on Y using $X^{*}$ and $e_{x_{p}}$ is residual of fitted model on $x_{p}$ using  $X^{*}$. 
+By simple regression estimate result, estimate for intercept is 
+$$
+\hat{\beta_{0}} = \overline{e_{Y}} - \hat{\beta_{p}} \overline{e_{x_{p}}}
+$$
+and
+$$
+\overline{e_{Y}} = \frac{\sum_{i=1}^{n} e_{Y_{i}}}{n} = \frac{1}{n} \times 1_{n}^{T}(I-H^{*})Y
+$$
+where $H^{*}=X^{*}(X^{*T}X^{*})^{-1}X^{*T}$.
+But $H^{*}$ is projection matrix of X which include one's column. According to fact that if $H$ is the projection matrix for $X$ which contains a column of ones, then $1_{n}^{T} (I - H) = 0$ or $(I - H) 1_{n} = 0$, $\overline{e_{Y}}$ = 0
+$$
+\overline{e_{x_{p}}} = \frac{\sum_{i=1}^{n} e_{X_{pi}}}{n} = \frac{1}{n} \times 1_{n}^{T}(I-H^{*})x_{p}
+$$
+By same logic, $\overline{e_{x_{p}}}$ = 0.
+
+Thus estimated intercept $\hat{\beta_{0}}$ = 0 for every added variable plot. 
+
+13. Exercise 9.12 from ALR
+
+Using  $X^TX = X^T_{(i)}X_{(i)} + x_i x_i^T$ where the subscript $(i)$ means without the ith case, show that 
+
+$$
+( X^T_{(i)}X_{(i)})^{-1} = (X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}
+$$
+
+where $h_{ii}$ is the $i$th diagonal element of $H = X(X^TX)^{-1}X^T$ using direct multiplication and simplify in terms of_ $h_{ii}$.
+
+answer: If above statement is true then their multiplication with $( X^T_{(i)}X_{(i)})$ will be $I$. Thus if  we multiply $( X^T_{(i)}X_{(i)})$ on both side then
+$$
+I = ( X^T_{(i)}X_{(i)})[(X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}]
+$$
+we have to prove that right side is also $I$
+$$
+\begin{aligned}
+&=( X^T_{(i)}X_{(i)})[(X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}] \\
+&=(X^TX - x_ix_i^T)[(X^TX)^{-1} +\frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}] \\ 
+&= I - x_ix_i^T(X^TX)^{-1} + \frac{x_ix_i^T(X^TX)^{-1}}{1-h_{ii}} - \frac{x_ix_i^T(X^TX)^{-1}x_ix_i^T(X^TX)^{-1}}{1-h_{ii}} \\ 
+&= I - x_ix_i^T(X^TX)^{-1} +\frac{x_ix_i^T(X^TX)^{-1}[1-x_i(X^TX)^{-1}x_i^T]}{1-h_{ii}} \\ 
+&= I - x_ix_i^T(X^TX)^{-1} +\frac{x_ix_i^T(X^TX)^{-1}[1-h_{ii}]}{1-h_{ii}} \\ 
+&= I - x_ix_i^T(X^TX)^{-1}+x_ix_i^T(X^TX)^{-1} = I
+\end{aligned}
+$$
+Thus suggested statement 
+$$
+( X^T_{(i)}X_{(i)})^{-1} = (X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}
+$$
+is true.
+
+
+14. Exercise 9.13 from ALR.   Using the above, show
+
+$$\hat{\beta}_{(i)} = \hat{\beta} -  \frac{(X^TX)^{-1}x_i e_i}{1 - h_{ii}}$$
+
+answer:
+$$
+\hat{\beta}_{(i)} = (X_{(i)}^TX_{(i)})^{-1}X_{(i)}^TY_{(i)}
+$$
+as shown previous question, 
+$$
+( X^T_{(i)}X_{(i)})^{-1} = (X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}
+$$
+and 
+$$
+X_{(i)}^TY_{(i)} = \sum_{j=1}^{n}x_jy_j -x_iy_i = X^TY - x_iy_i 
+$$
+Thus  
+$$
+\begin{aligned}
+\hat{\beta}_{(i)} &= [(X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}][X^TY-x_iy_i] \\
+&=[(X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}]X^TY -  [(X^TX)^{-1} + \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}}{1 - h_{ii}}]x_iy_i \\
+&=(X^TX)^{-1}X^TY + \frac{(X^TX)^{-1}x_ix_i^T}{1-h_{ii}}(X^TX)^{-1}X^TY - (X^TX)^{-1}x_iy_i - \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}x_iy_i}{1-h_{ii}} \\
+&= \hat{\beta} + \frac{(X^TX)^{-1}x_ix_i^T}{1-h_{ii}} \hat{\beta} - (X^TX)^{-1}x_iy_i - \frac{(X^TX)^{-1}x_ix_i^T  (X^TX)^{-1}x_iy_i}{1-h_{ii}} \\
+&= \hat{\beta} + \frac{(X^TX)^{-1}x_i\hat{y_i}}{1-h_{ii}} -(X^TX)^{-1}x_iy_i - \frac{(X^TX)^{-1}x_iy_i}{1-h_{ii}}h_{ii} \\
+&= \hat{\beta} + \frac{(X^TX)^{-1}x_i\hat{y_i}}{1-h_{ii}} - \frac{(X^TX)^{-1}x_iy_i}{1-h_{ii}} \\
+&= \hat{\beta} - \frac{(X^TX)^{-1}x_i}{1-h_{ii}}(y_i -\hat{y_i}) = \hat{\beta} - \frac{(X^TX)^{-1}x_ie_i}{1-h_{ii}}
+\end{aligned}
+$$

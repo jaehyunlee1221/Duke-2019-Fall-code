@@ -1,0 +1,199 @@
+---
+title: "Homework 2"
+author: 'Cheetah'
+date: "9/6/2019"
+output: 
+  html_document:
+    keep_md: yes
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA)
+library(scatterplot3d)
+```
+
+## Task 2
+
+```{r "task2", error=TRUE}
+#Class space3D
+#This is a class for handling spatial data consisting of a 3 dimensional data set. 
+
+#new_space3D() is a constructor function that efficiently creates new objects with the correct structure (referenced from "Advanced R" by Wickham, available at #https://adv-r.hadley.nz/s3.html). 
+
+new_space3D <- function(x = double(),y = double(),z = double()){
+  stopifnot(is.double(x))
+  stopifnot(is.double(y))
+  stopifnot(is.double(z))
+  
+  structure(list(X = x,Y = y,Z = z),
+            class="space3D")
+}
+
+
+#validate_space3D() is a validator function that performs more complex input checks to determine that the object consists of correct values. 
+#validator for space3D
+validate_space3D <- function(x = list()){
+  x_len <- length(x[[1]])
+  y_len <- length(x[[2]])
+  z_len <- length(x[[3]])
+  
+  if(x_len != y_len | y_len != z_len) {
+    stop("Axis arguments have different lengths.",
+         call. = FALSE)
+  }
+  
+  x_val <- unlist(x[[1]])
+  y_val <- unlist(x[[2]])
+  z_val <- unlist(x[[3]])
+  
+  if(any(is.na(x_val)|is.na(y_val)|is.na(z_val))){
+    stop("At least one value is missing. All values should be non-missing for this class.",
+         call. = FALSE)
+  }
+}
+
+
+#space3D() is a helper function that allows users to create new objects of the class space3D. 
+#helper for space3D
+space3D <- function(x = double(),y = double(),z = double()){
+  x <- as.double(x)
+  y <- as.double(y)
+  z <- as.double(z)
+  
+  #The class ends by calling the constructor and the validator. 
+  new_space3D(x, y, z)
+  validate_space3D(new_space3D(x, y, z))
+  return(new_space3D(x, y, z))
+}
+```
+
+## Testing of Class 
+
+```{r "testing for class space3D", error = TRUE, fig.cap = "Figure 1. 3-Dimensional Graph of X, Y, and Z coordinates", fig.align = "center"}
+#Call the validator to ensure that it is functioning properly.
+validate_space3D(new_space3D(c(1,2),c(3,4),c(5,6)))
+#Call should report an error, as all axis lengths must be the same and values must be non-missing: 
+validate_space3D(new_space3D(c(1,2,5),c(3,4),c(5,NA)))
+
+space3D(1:5, 9:13, -1:-5)
+#Call should report an error, as all values must be non-missing:
+space3D(1:2, c(1,NA), c(1,9))
+a <- space3D(1:-3, 9:13, -1:-5)
+
+#Method 1.
+#Function takes an input of a list of x, y, and z coordinates for spatial data and uses "scatterplot3d" to generate a 3-dimensional graph. 
+
+plot.space3D <- function(x){
+  require(scatterplot3d)
+  scatterplot3d(x = x[[1]],y = x[[2]],z = x[[3]],
+                xlab = "X",ylab = "Y",zlab = "Z")
+}
+plot.space3D(a)
+
+#Method 2. 
+#Function takes an input of a list of x, y, and z coordinates for spatial data and returns a list of the ranges of each of the three axes. 
+
+range.space3D <- function(x, na.rm= FALSE){
+  X_range <- range(x[[1]])
+  Y_range <- range(x[[2]])
+  Z_range <- range(x[[3]])
+  result <- list(X = X_range,Y = Y_range, Z = Z_range)
+  return(result)
+}
+range(a)
+```
+
+## Task 3
+
+```{r "task3", message=FALSE}
+library(dplyr)
+is.armstrong <- function(x) {
+  UseMethod("is.armstrong")
+}
+
+is.armstrong.default <- function(x){
+  stop("The class of 'x' is not recognized")
+}
+
+is.armstrong.integer <- function(x) {
+  stopifnot(all(x > 0), all(x < 1000), all(is.integer(x)), any(is.na(x) == FALSE))
+  
+  first <- x %/% 100
+  second <- (x - first * 100) %/% 10
+  third <- (x - first * 100 - second * 10)
+  digit <- case_when(
+    x > 100 ~ 3,
+    x > 10 ~ 2,
+    TRUE ~ 1,
+  )
+
+  imstrong <- first^digit + second^digit + third^digit
+  result <- x == imstrong
+  
+  return(result)
+}
+
+is.armstrong.double <- function(x){
+
+  if(any(x %% 1 !=0)) {
+    stop("'x' is not an integer; will not be coerced into an integer.")
+  }
+
+    x <- as.integer(x)
+    is.armstrong.integer(x)
+} 
+
+is.armstrong.character <- function(x){
+  stop("'x' is a character, and cannot be coerced into integer.")
+}
+
+is.armstrong.logical <- function(x){
+  stop("'x' is a logical Boolean, and cannot be coerced into an integer.")
+}
+```
+
+#### Valid inputs
+
+```{r "valid example", error=TRUE}
+is.armstrong(x = 1)
+is.armstrong(x = 153)
+is.armstrong(x = 154)
+is.armstrong(x = c(153, 154))
+is.armstrong(x = 1:999)
+```
+
+#### Further validation of function 
+
+```{r "further validation of function is.armstrong", error=TRUE}
+#The output above is difficult to verify quickly. So, we extract the indices where the boolean is TRUE using the "which" command. 
+vector_totest <- c(is.armstrong(x = 1:999))
+which(vector_totest == TRUE)
+
+#The specifications state that the argument "x" takes an atomic vector of positive integers #(~need not be of type integer~) up to 999. The following set of calls tests the function with input of type double values. 
+is.armstrong(x = as.double(2))
+is.armstrong(x = as.double(32))
+is.armstrong(x = as.double(371))
+is.armstrong(x = c(as.double(3), as.double(407)))
+```
+
+#### Invalid inputs
+
+```{r "invalid example", error=TRUE}
+is.armstrong(x = -2)
+is.armstrong(x = 1011)
+is.armstrong(x = c(pi, 6))
+is.armstrong(x = c(6, pi))
+is.armstrong(x = "a")
+is.armstrong(x = c("a", 1, 2))
+```
+
+#### Further validation of function
+
+```{r "another validation of function is.armstrong", error=TRUE}
+#The input is an empty vector. The function should halt execution and display an appropriate error message to the screen.  
+is.armstrong(x = c())
+
+#The input is a logical Boolean. The function should halt execution and display an appropriate error message to the screen.
+is.armstrong(x = c(TRUE))
+```

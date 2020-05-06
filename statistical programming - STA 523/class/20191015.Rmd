@@ -1,0 +1,114 @@
+---
+title: "2019-10-15 in class"
+author: "Jae Hyun Lee"
+date: "10/15/19"
+output: 
+  html_document:
+    css: lab6.css
+    toc: true
+    number_sections: false
+    toc_float: true
+    df_print: paged
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      message = FALSE, 
+                      warning = FALSE,
+                      comment = NA,
+                      fig.width=8, 
+                      fig.height=6)
+```
+## Make setup
+
+refer https://gist.github.com/evanwill/0207876c3243bbb6863e65ec5dc3f058
+go to https://sourceforge.net/projects/ezwinports/files/
+Download make-4.1-2-without-guile-w32-bin.zip (get the version without guile).
+Extract zip.
+Copy the contents to your Git\mingw64\ merging the folders, but do NOT overwrite/replace any existing files.
+
+
+## Introduction
+
+On May 20, 2013 an extremely powerful and devastating tornado struck
+Moore, Oklahoma, a city just south of Oklahoma City. The tornado was over one
+mile wide and had a maximum wind speed of 210 mph. This area is a known hotbed 
+for tornadic activity. In fact, the 2013 Moore tornado followed a very similar 
+path as two other large tornadoes that hit the area in 1999 and 2003, 
+respectively.
+
+How would you quantify the risk of living in certain areas of the Oklahoma
+City metro? This lab will get you started in answering that question with a
+focus on obtaining some of the necessary data using web scraping techniques
+and APIs.
+
+<br/>
+
+## Data
+
+### OK tornadoes
+
+<div class="bkgemph">
+Scrape data from http://www.tornadohistoryproject.com to get all
+tornadoes recorded in Oklahoma from 1998 - 2017. Do this in 
+`R/get_tornadoes.R`. Save your final data object with `saveRDS()` 
+in folder `data`. Below, load your data with `readRDS()`
+</div>
+
+```{r load_tornadoes, eval=F}
+tornadoes <- readRDS("data/ok_tor.rds")
+```
+
+<br/>
+
+### OKC school district boundaries
+
+<div class="bkgemph">
+Navigate to https://data.okc.gov/portal/page/api. The city of Oklahoma City 
+Open Data Portal has an API available that gives access to service, zoning,
+public safety, and school data. Use the API to obtain the school district
+boundaries.
+
+Similar to the last section, do this in `R/get_school_districts.R`.
+Save your object with `saveRDS()` in folder `data`. Below, load your 
+data with `readRDS()`.
+</div>
+
+```{r load_school_districts}
+school <- readRDS("data/school_districts.rds")
+```
+
+<br/>
+
+### OKC fire stations
+
+<div class="bkgemph">
+Navigate to https://data.okc.gov/portal/page/api. The city of Oklahoma City 
+Open Data Portal has an API available that gives access to service, zoning,
+public safety, and school data. Use the API to obtain the fire stations.
+
+Similar to the last section, do this in `R/get_fire_stations.R`.
+Save your object with `saveRDS()` in folder `data`. Below, load your 
+data with `readRDS()`.
+</div>
+
+```{r load_fire_stations}
+fire <- readRDS("data/fire_stations.rds")
+```
+
+<br/>
+
+## Analysis
+
+*Not required, but something to think about if you were to proceed further.*
+
+<div class="bkgemph">
+How would you develop a risk metric for each school district given the 
+historical tornado data and fire station data? What other data may be valuable
+to you for your analysis?
+</div>
+
+
+

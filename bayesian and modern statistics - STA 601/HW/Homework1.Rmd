@@ -1,0 +1,177 @@
+---
+title: 'STA 601/360 Homework1'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+require(magrittr)
+require(plyr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW1 for STA-601
+
+
+## Exercise 1
+Full conditionals: Let X,Y,Z be random variables with joint density
+
+$$
+p(x,y,z) \propto f(x,z)g(y,z)h(z)
+$$
+Show that 
+
+### part (a) 
+$$
+p(x \mid y,z) \propto f(x,z)
+$$
+answer: 
+$$
+p(x,y,z) = p(x \mid y,z) \times p(y \mid z) \times p(z) \propto f(x,z)g(y,z),h(z)
+$$ 
+Obviously 
+$$ p(z) \propto h(z) $$ 
+and 
+$$p(y \mid z) = p(y,z) / p(z)$$ 
+$$\rightarrow  p(y,z) \propto g(y,z) 
+\rightarrow p(y \mid z) \propto g(y,z) 
+$$ Thus remaining 
+$$ p(x \mid y,z) \propto f(x,z) $$ 
+
+### part (b) 
+$$
+p(y \mid x,z) \propto g(y,z)
+$$
+answer: 
+$$
+p(x,y,z) = p(y \mid x,z) \times p(x \mid z) \times p(z) \propto f(x,z)g(y,z),h(z)
+$$ 
+Obviously 
+$$ p(z) \propto h(z)
+$$ 
+and 
+$$p(x \mid z) = p(x,z) / p(z)
+$$ 
+$$
+\rightarrow  p(x,z) \propto f(x,z) 
+\rightarrow p(x \mid z) \propto f(x,z) 
+$$ Thus remaining 
+$$ p(y \mid x,z) \propto g(y,z) 
+$$ 
+
+### part(c\) 
+X and Y are conditionally independent given Z
+answer: 
+By definition, if X and Y are independent,
+$$ p(x,y \mid z) = p(x \mid z)p(y \mid z) $$ and it implies that
+$$ p(x \mid y,z) = p(x \mid z) \;or\; p(y \mid x,z) = p(y \mid z) $$ As shown at above questions, I could find that their full conditional distribution do not depend on each other
+$$ p(x \mid y,z) \propto f(x,z) \propto p(x \mid z) $$
+$$ p(y \mid x,z) \propto g(y,z) \propto p(y \mid z) $$   
+Thus I can conclude that they are conditional independent.
+
+
+
+
+## Exercise 2
+conditional independence: show that 
+
+$$ A^{c} \perp B, A \perp B^{c}, A^{c} \perp B^{c}
+\quad  if \quad A \perp B$$
+
+
+### part(a)
+If A,B are conditionally independent given C then
+$$ p(A \cap B \mid C) = p(A \mid C)p(B \mid C)$$ Then
+
+<!-- How to use aligned environment in LaTeX -->
+$$
+\begin{aligned}
+p(A^{c} \cap B \mid C) &= p(B \mid C) - p(A \cap B \mid C) \\ 
+&= p(B \mid C) - p(A \mid C)p(B \mid C) \\ 
+&= p(B \mid C)[1 - p(A \mid C)] \\
+&= p(B \mid C)p(A^{c} \mid C)
+\end{aligned}
+$$
+
+Similarly 
+
+$$
+\begin{aligned}
+p(A \cap B^{c} \mid C) &= p(A \mid C) - p(A \cap B \mid C) \\
+&= p(A \mid C) - p(A \mid C)p(B \mid C) \\ 
+&= p(A \mid C)[1 - p(B \mid C)] \\
+&= p(A \mid C)p(B^{c} \mid C)
+\end{aligned}
+$$
+
+Lastly,
+
+$$ 
+\begin{aligned}
+p(A^{c} \cap B^{c} \mid C) &= p((A \cup B)^{c} \mid C) \\
+&= 1- p(A \cup B \mid C) \\
+&= 1 - [p(A \mid C) + p(B \mid C) - p(A \cap B \mid C)]\\
+&= 1 - p(A \mid C) - p(B \mid C) + p(B \mid C)p(A \mid C) \\
+&= [1-p(A \mid C)][1-p(B \mid C)] \\
+&= p(A^{c} \mid C)p(B^{c} \mid C)
+\end{aligned}
+$$
+
+
+
+### part(b)
+
+show the example that 
+$$ A \perp B \mid C \quad hold \quad A \perp B \mid C^{c} \quad not \; hold  $$
+Let consider 2 fair dice toss and event A,B,C are as below:     
+* A = first dice value is 1      
+* B = second dice value is 1      
+* C = sum of dice is less or equal to 2     
+
+Then we can find probability functions of A,B,C as follow:     
+$$ p(A \mid C) = 1, p(B \mid C) = 1, p(A \cap B \mid C) =1 \rightarrow A \perp B \mid C $$ and
+$$ p(A \mid C^{c}) =5/35, p(B \mid C^{c}) = 5/35, p(A \cap B \mid C^{c}) = 0/35 \\ \rightarrow A \perp B \mid C^{c} \;does \; not \; hold$$
+
+## Exercise 3
+There are three coins in a bag; two fair coins (probability of heads = probability of tails) and one fake coin (probability of heads = 1).  
+a. You reach in and select one coin at random and throw it in the air. What is the probability that it lands on heads?  
+b. You reach in and select one coin at random and throw it in the air and get heads. What is the probability that it is the fake coin?
+
+Let $A$ be the event that I choose fair coin and $A^{c}$ is event that I choose fake coin.     
+Then, $p(A)$ = 2/3, $p(A^{c})$ = 1/3   
+When Z is event that I have head, $p(Z \mid A)$ = 1/2, $p(Z \mid A^{c})$ = 1   
+
+### part(a)
+$$ p(Z) =p(Z \mid A)p(A) + p(Z \mid A^{c})p(A^{c}) = 1/3 + 1/3 = 2/3 $$
+
+### part(b)
+$$
+\begin{aligned}
+p(A^{c} \mid Z) &= p(A^{c} \cap Z) /p(Z) \\
+&= p(Z \mid A^{c})p(A^{c})/p(Z) \\
+&= 1/3 \,/ \, 2/3 = 1/2 
+\end{aligned}
+$$ 
+
+
+## Exercise4
+Monty Hall Problem! There are three doors on stage and a host hides a prize behind one of the doors and goats behind the other two doors. A contestant picks one of the three doors (say door 1) and then the game show host opens one of the remaining two doors (say door 3), making sure to reveal a goat. Should the contestant switch to door 2?  
+Prior knowledge: The prize originally had 1/3 probability of being behind any of the three doors.  
+The host's model: he knows which door has the prize. If he has to choose between a door with a goat and one with a prize, he chooses the one with the prize. If he has to choose between two doors with goats, he picks one of the doors with probability 1/2.
+
+### answer:
+Organize situation as A, B, C are event that prize is behind each door 1,2,3 and E is event that game host show goat in door 3.    
+$p(A),p(B),p(C)$ = 1/3 for each event.    
+If prize is in door1, host choose two doors with probability 1/2. 
+Thus $p(E \mid A)$ = 1/2.   
+In the case that prize is in door2, host have to choose between goat and prize in above situation. Following the host's model, I think there is typo, so I changed rule from original that he should show prize between prize and goat to modified one that he should show goat between prize and goat.      
+So he cannot open door2 and $p(E \mid B)$ = 1.     
+If prize is in door3, he cannot show goat at door3 then $p(E \mid C)$ = 0.   
+Thus $p(E) = p(E \mid A)p(A) + p(E \mid B)p(B) = 1/2$ and $\,p(A \mid E)=1/3, p(B \mid E)=2/3$    
+Consequently, since given E, probability of B is higher than A, contester should change his decision.    

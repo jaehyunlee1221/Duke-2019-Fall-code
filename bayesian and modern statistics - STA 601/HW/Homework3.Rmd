@@ -1,0 +1,345 @@
+---
+title: 'STA 601/360 Homework3'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+require(magrittr)
+require(plyr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW3 for STA-601
+
+
+## Exercise 1
+
+#### a) mean of poisson distribution with parameter 
+$\theta$
+
+$$
+\begin{aligned}
+E(y \mid \theta) &= \sum_{y=0}^{\infty} y \frac{e^{-\theta}\theta^y}{y!} \\
+&= \sum_{y=1}^{\infty} e^{-\theta} \frac{\theta^{y-1}}{(y-1)!} \quad Let \; x=y-1 \; then   \\ 
+&= \theta\sum_{x=0}^{\infty} e^{-\theta} \frac{\theta^x}{x!} \\
+\end{aligned}
+$$
+By tailor  series $e^\theta = 1+\theta+\frac{\theta^2}{2!}+\frac{\theta^3}{3!} \cdot \cdot \cdot = \sum_{x=0}^{\infty} \frac{\theta^x}{x!}$ 
+
+
+$$
+\rightarrow E(Y\mid\theta) = \theta \times e^{-\theta} \times e^\theta = \theta
+$$
+
+#### b) variance of poisson distribution with parameter
+$\theta$
+
+$$
+\begin{aligned}
+E(Y^2 \mid \theta) &= \sum_{y=0}^{\infty} y^2 \frac{e^{-\theta}\theta^y}{y!} \\
+&= \sum_{y=1}^{\infty} y \frac{e^{-\theta}\theta^y}{(y-1)!} \quad Let\;x=y-1\; then \\
+&= \sum_{x=0}^{\infty} (x+1) \frac{e^{-\theta}\theta^{x+1}}{x!} \\
+&= \theta \sum_{x=0}^{\infty} x \frac{e^{-\theta}\theta^x}{x!} + \theta \sum_{x=0}^{\infty} \frac{e^{-\theta}\theta^x}{x!} \\
+&= \theta \times E(Y \mid \theta) + \theta = \theta^2 +\theta
+\end{aligned}
+$$
+$$
+Var(Y \mid \theta) = E(Y^2 \mid \theta) - E(Y \mid \theta)^2 = \theta^2 + \theta - \theta^2 = \theta
+$$
+
+
+## Exercise 2
+
+#### a) find posterior dist, mean, variance, 95% quantile based interval for 
+$\theta$s, given $\theta_A$ ~ gamma(120,10), $\theta_B$ ~ gamma(12,1), $p(\theta_A,\theta_B) = p(\theta_A)p(\theta_B)$ 
+
+```{r}
+y_A <- c(12,9,12,14,13,13,15,8,15,6)
+y_B <- c(11,11,10,9,9,8,7,10,6,8,8,9,7)
+c(sum(y_A),length(y_A))
+c(sum(y_B),length(y_B))
+th_a <- rgamma(10000,237,20)
+th_b <- rgamma(10000,125,14)
+c(mean(th_a),var(th_a))
+c(mean(th_b),var(th_b))
+c(qgamma(0.05,237,20),qgamma(0.95,237,20))
+c(qgamma(0.05,125,14),qgamma(0.95,125,14))
+
+```
+
+As we have learn in text book, posterior model for gamma prior with possion sampling model is gamma, i.e. conjugate prior.  
+
+when prior $p(\theta) \sim gamma(a,b)$ and sampling model $p(y\mid\theta) \sim poisson(\theta)$  
+ 
+which generate likelihood function $\prod_{i=1}^{n}p(y_i\mid\theta) \propto e^{-n\theta}\theta^{\sum y_i}$,
+  
+posterior distribution $p(\theta \mid y_1,y_2 \cdot\cdot\cdot y_n) \sim gamma(a+\sum y_i,b+n)$.
+
+
+In this case, $n_A=10, n_B = 13$  
+and $\sum_{i=1}^{n_A} y_{Ai}=117,\sum_{i=1}^{n_B} y_{Bi}=113$
+  
+Thus posterior distribution for both case are  
+$p(\theta_A \mid y_A) \sim gamma(237,20)$ and $p(\theta_B \mid y_B) \sim gamma(125,14)$
+
+Expectation of each $\theta$ are apporximately  
+$E(\theta_A \mid y_A) = \frac{a}{b} = \frac{237}{20} = 11.85$ $E(\theta_B \mid y_B) = \frac{125}{14}=8.93$
+
+Variance of each $\theta$ are approximately  
+$Var(\theta_A \mid y_A) = \frac{a}{b^2} = \frac{237}{20^2} = 0.57$ $Var(\theta_B \mid y_B) = \frac{125}{14^2}=0.62$
+
+95% Quantile based confidence intervals are
+$\theta_A \in [\theta_{A_{0.025}},\theta_{A_{0.975}}] = 0.95$ and  
+$\theta_A \in [10.61,13.14] = 0.95$.  
+On the other hand,  
+$\theta_B \in [7.65,10.28] = 0.95$
+
+#### b) 
+for each $n_0$ compute Expectation and plot posterior distribution for $\theta_B$, Descirbe what sort of prior belief about theta would be necessary in order for the posterior expectation of $\theta_B$ to be close to $\theta_B$
+
+Posterior distribution of $\theta_B$ when prior is $gamma(12*n_0,n_0)$ is $gamma(12*n_0 + 113,n_0 + 13)$
+
+Then posterior expection of $\theta$ is $E(\theta \mid y_1,y_1 \cdot\cdot\cdot,y_n)$ = $\frac{12 \times n_0 + 113}{n_0 + 13}$
+
+```{r}
+n_0 <- 1:50
+E_th_B <- (n_0*12 + 113)/(n_0+13)
+E_th_B
+data <- data.frame(par = n_0,expectation = E_th_B)
+ggplot(data=data,aes(x=n_0,y=E_th_B)) +
+  geom_point() +
+  geom_hline(yintercept = 11.85,color="red") +
+  labs(title="Expectation of posterior vs prior parameter",
+       x="n_0",y="Expectation")
+```
+
+
+Expectation of $\theta_A$ is as follow : $E(\theta_A \mid y_A) = 11.85$  
+And we can recognize that as n_0 gets larger, expectation of $\theta_B$ approachs to expectation of $\theta_A$. Thus prior belief which support that $\theta = 12$ based on larger prior sample size are necessary to be close to expecation of $\theta_A$
+
+#### c)
+Knowledge about $\theta_A$ should tell us something about population B prior to experiment, although sample are saying that they have different population property. Because before experiment, we don't know anything about mice but A and B are related species. Moreover, independence is so strong assumption that we cannot easily use them. Thus it does not makes sense to have $p(\theta_A, \theta_B) = p(\theta_A) \times p(\theta_B)$
+
+
+## Excercise 3
+Galenshore(a,$\theta$) distribution.
+$$
+p(y)=\frac{2}{\Gamma(a)} \theta^{2a}y^{2a-1}e^{-\theta^2 y^2}
+$$
+
+#### a)
+Identify a class of conjugate prior densities for $\theta$. plot a few members of this class of density.
+
+When organize p(y) respect to $\theta$, we can find that $p(y) \propto \theta^{2a}e^{-\theta^2 y^2}$.
+Then posterior distributin for $\theta$
+$$
+p(\theta \mid y) \propto p(\theta)\theta^{2a}e^{-\theta^2 y^2}
+$$
+Thus conjugate prior should include terms $\theta^{c_1} e^{-c_2\theta^2}$.
+
+To make problem simple, we can think that galenshore as prior distribution which has parameter $\alpha,\beta$. Then it includes $\theta^{c_1}e^{-c_2\theta^2}$ where $c_1 = 2\alpha-1, c_2 = \beta^2$.
+
+$$
+p(\theta)=\frac{2}{\Gamma(\alpha)} \beta^{2\alpha}\theta^{2\alpha-1}e^{-\beta^2 \theta^2}
+$$
+
+```{r ex3_a}
+dgal <- function(theta,beta,alpha){
+  2/gamma(alpha) * (beta)^(2*alpha) * theta^(2*alpha-1) * exp(-(beta^2)*theta^2)
+}
+
+theta <- seq(0,4,length.out = 1000)
+beta <- 1:3
+alpha <- seq(0.5,1.5,length.out = 3)
+
+par(mfrow=c(3,3))
+
+for(i in seq_along(beta)){
+  for(j in seq_along(alpha)){
+    plot(theta,dgal(theta,i,j), xlab = expression(theta),
+         ylab=expression(paste("p(",theta,")")),
+         main=paste(expression(beta),"=",i,expression(alpha),"=",j))
+  }
+}
+```
+
+#### b)
+$Y_1,\cdot\cdot Y_n \sim i.i.d \quad Galenshore(a,\theta)$. Find posterior using above prior
+assume prior $p(\theta) \sim Galenshore(\alpha,\beta)$  
+
+Since Y are i.i.d, likelihood function for Y is
+$$
+\begin{aligned}
+p(y_1 \cdot \cdot y_n \mid \theta, a) = p(y_1 \cdot \cdot y_n \mid \theta) &=\prod_{i=1}^{n} p(y_i \mid \theta,a) \\
+&= \prod_{i=1}^{n} \frac{2}{\Gamma(a)} \theta^{2a}y_i^{2a-1}e^{-\theta^2 y_i^2} \\
+&\propto \theta^{2an} e^{-\theta^2 \sum y_i^2} 
+\end{aligned}
+$$
+because we have assume that a is given
+
+$$
+\begin{aligned}
+p(\theta \mid y_1 \cdot\cdot\cdot y_n) &= \frac{p(\theta,y_1 \cdot\cdot y_n)}{p(y_1 \cdot\cdot y_n)} \\
+&= \frac{p(y_1 \cdot\cdot y_n \mid \theta)p(\theta)}{p(y_1 \cdot\cdot y_n)} \\
+&\propto p(y_1 \cdot\cdot y_n \mid \theta)p(\theta) \\
+&= \prod_{i=1}^{n} \frac{2}{\Gamma(a)} \theta^{2a}y_i^{2a-1}e^{-\theta^2 y_i^2} \times \frac{2}{\Gamma(\alpha)} \theta^{2\alpha-1}e^{-\beta^2\theta^2} \\
+&\propto \theta^{2an}e^{-\theta^2 \sum_{i=1}^{n} y_i^2} \times \theta^{2\alpha-1}e^{-\beta^2\theta^2} \\
+&= \theta^{2an + 2\alpha -1}exp\{-\theta^2(\beta^2+\sum_{i=1}^n y_i^2) \}
+\end{aligned}
+$$
+Thus posterior distribution for $p(\theta \mid y_1 \cdot\cdot y_n)$ is $Galenshore(\alpha+na,\sqrt{\beta^2+\sum y_i^2})$ 
+
+#### c)
+write down relative probability function and simplify. Identify sufficient statistics
+$$
+\begin{aligned}
+\frac{p(\theta_a \mid y_1 \cdot\cdot\cdot y_n)}{p(\theta_b \mid y_1 \cdot\cdot\cdot y_n)} &= \frac{\theta_a^{2(na+\alpha)-1}e^{-\theta_a^2(\beta^2+\sum_{i=1}^n y_i^2)}}{\theta_b^{2(na+\alpha)-1}e^{-\theta_b^2(\beta^2+\sum_{i=1}^n y_i^2)}} \\
+&= (\frac{\theta_a}{\theta_b})^{2(na+\alpha)-1} exp \{-(\beta^2+\sum_{i=1}^{n}y_i^2)(\theta_a^2-\theta_b^2) \} \\
+&= (\frac{\theta_a}{\theta_b})^{2(na+\alpha)-1} exp \{-\beta^2(\theta_a^2-\theta_b^2)-\sum_{i=1}^{n}y_i^2(\theta_a^2-\theta_b^2) \}
+\end{aligned}
+$$
+
+Through above equation of relative probibility function, we can recognize that $\theta_a$ and $\theta_b$ depend on $y_1, y_2 \cdot \cdot \cdot y_n$ only by $\sum_{i=1}^{n} y_i^2$. Therefore, we can conclude that all information of $y_1, y_2 \cdot \cdot \cdot y_n$ is included in $\sum_{i=1}^{n} y_i^2$ and it is sufficient statistics for $\theta$ and $y_1, y_2 \cdot \cdot \cdot y_n \mid \theta$.
+
+#### d)
+Determine $E[\theta \mid y_1 \cdot\cdot\cdot y_n]$
+  
+According to part b), we have shown that $p(\theta) \sim Galenshore(\alpha+na,\sqrt{\beta^2+\sum y_i^2})$.
+And we know that $E[y] = \frac{\Gamma(a+1/2)}{\theta \Gamma(a)}$ when $y \sim Galenshore(a,\theta)$
+Thus 
+$$
+E[\theta \mid y_1,\cdot\cdot\cdot,y_n] = \frac{\Gamma(\alpha + na+1/2)}{\Gamma(\alpha+na)\sqrt{(\beta^2+\sum_{i=1}^{n} y_i^2)}}
+$$
+
+#### e)
+Determine the form of the posterior predictive density
+$p(\tilde{y} \mid y_1 \cdot \cdot \cdot y_n)$
+
+$$
+\begin{aligned}
+p( \tilde{y} \mid y_1 \cdot\cdot\cdot y_n) 
+&= \int p(\tilde{y},\theta \mid y_1 \cdot\cdot\cdot y_n)d \theta \\
+&= \int p(\tilde{y} \mid \theta,y_1 \cdot \cdot \cdot y_n) p(\theta \mid y_1 \cdot \cdot \cdot y_n)d \theta \\
+&=\int p(\tilde{y} \mid \theta)p(\theta\mid y_1 \cdot\cdot\cdot y_n)d\theta \;(for\; independce\; of\; y_i ) \\
+&= \int \frac{2}{\Gamma(a)}\theta^{2a} \tilde{y}^{2a-1} e^{-\theta^2 \tilde{y}^2} \times \frac{2}{\Gamma(\alpha + na)} (\beta^2 + \sum y_i^2)^{\alpha + na} \theta^{2(\alpha+na)-1}e^{-(\beta^2+\sum y_i^2)\theta^2}d\theta \\
+&= \frac{4}{\Gamma(\alpha+na)\Gamma(a)}\tilde{y}^{2a-1}(\beta^2 + \sum y_i^2)^{\alpha+na} \times \int \theta^{2(\alpha+(n+1)a)-1}e^{-\theta^2(\tilde{y}^2+\beta^2+\sum y_i^2)}d\theta \\
+&= \frac{4}{\Gamma(\alpha+na)\Gamma(a)}\tilde{y}^{2a-1}(\beta^2 + \sum y_i^2)^{\alpha+na} \times \frac{\Gamma(\alpha + (n+1)a)}{2} \times (\frac{1}{\beta^2+\tilde{y}^2+\sum y_i^2})^{\alpha+(n+1)a}\\
+&(using \;kernal \; of \;Ganlenshore) \\
+&= \frac{2\Gamma(\alpha + (n+1)a)}{\Gamma(\alpha+na)\Gamma(a)} \times (\frac{\beta^2 + \sum y_i^2}{\beta^2 + \sum y_i^2 + \tilde{y}^2})^{\alpha+na} \times (\frac{1}{\beta^2 + \sum y_i^2 + \tilde{y}^2})^a \times \tilde{y}^{2a-1}
+\end{aligned}
+$$
+
+
+## Exercise 4
+
+Posterior comparison: 
+  
+county1 : sample = 100, $\sum y_{1i} = 57$
+  
+county2 : sample = 50, $\sum y_{2i} = 30$
+
+According to text book, when prior distribution is uniform $p(\theta) = 1$ and sampling model $p(y_i \mid \theta) = \theta^{y_i} (1-\theta)^{1-y_i}$,
+  
+posterior distribution $p(\theta \mid y_1 \cdot\cdot\cdot y_n) \propto \theta^{\sum_{i=1}^{n}y_i} (1-\theta)^{\sum_{i=1}^n}y_i \sim beta(1+\sum_{i=1}^n y_i,1+n-\sum_{i=1}^n y_i)$
+  
+Thus
+$$
+\theta_1 \sim beta(57+1,100-57+1) \\
+\theta_2 \sim beta(30+1,50-30+1)
+$$
+```{r}
+set.seed(1000)
+theta_1 <- rbeta(5000,58,44)
+theta_2 <- rbeta(5000,31,21)
+mean(theta_2>theta_1)
+```
+Thus $p(\theta_1< \theta_2 \mid the \;data \;and \;prior) = 0.631$
+
+
+## Exercise 5
+
+#### a)
+For prior given in part a) of 3.3, obtain $p(\theta_B < \theta_A \mid y_A,y_B)$ via monte carlo
+
+At exercise 2 a), Q3.3, we have obtain that 
+$$
+p(\theta_A \mid y_A) \sim gamma(237,20) \\
+p(\theta_B \mid y_B) \sim gamma(125,14)
+$$
+```{r}
+set.seed(1000)
+theta_a <- rgamma(5000, 237, 20)
+theta_b <- rgamma(5000, 125, 14)
+mean(theta_b<theta_a)
+```
+Thus $p(\theta_B < \theta_A \mid y_A,y_B) = 0.99$ 
+
+#### b)
+for a range of n0, obtain $p(\theta_B < \theta_A \mid y_A,y_B)$ for $\theta_A \sim gamma(120,10)$ and $\theta_B \sim gamma(12*n_0,n_0)$. Describe how sensitive conclusion about the event {$\theta_B<\theta_A$} are to the prior distribution on $\theta_B$
+
+At Exercise2, Q3.3, we have obtain that
+$$
+p(\theta_A \mid y_A) \sim gamma(237,20) \\
+p(\theta_B \mid y_B) \sim gamma(12*n_0+ 113,n_0+13)
+$$
+```{r}
+set.seed(1000)
+n_0 <- 1:100
+result <- rep(0,100)
+theta_a <- rgamma(5000,237,20)
+for(i in 1:100){
+  theta_b <- rgamma(5000,113+12*n_0[i],13+n_0[i])
+  result[i] <- mean(theta_b<theta_a)
+}
+plot(n_0, result, type='l')
+```
+
+probability of the event {$\theta_B < \theta_A$} is slowly moving to 0.5 as $n_0$ gets bigger. That is sample size which support that $\theta_B$ is 12 gets bigger, the probability of event gets smaller. However, convergence rate is so slow that even prior sample size is 100, it is still larger than 0.6. This situation occurred because of data which support another result.
+
+#### c)
+repeat a),b) with event{$\tilde{Y}_B< \tilde{Y}_A$} where they are sample from the posterior predictive model
+
+for a)
+$$
+\begin{aligned}
+p(\tilde{y} \mid y_1,y_2 \cdot\cdot\cdot y_n) &= \int p(\tilde{y} \mid \theta, y_1 \cdot\cdot y_n)d\theta \\
+&=\int p(\tilde{y}\mid\theta)p(\theta \mid y_1 \cdot\cdot y_n)d\theta
+\end{aligned}
+$$
+In this equation, we can figure out that $p(\tilde{y} \mid y_1,y_2 \cdot\cdot\cdot y_n)$ is expectation $E[p(\tilde{y} \mid \theta)]$ regard to posterior distribution of $\theta$. Thus it can be approximated by sampling $\theta^{(1)} \cdot\cdot \theta^{(n)} \sim i.i.d \; p(\theta \mid y_1 \cdot\cdot y_n)$ and $\sum_{s=1}^{S} p(\tilde{y} \mid \theta^{(s)}) / S$
+
+```{r}
+set.seed(1000)
+theta_a <- rgamma(5000,237,20)
+theta_b <- rgamma(5000,125,14)
+y_a <- rpois(5000,theta_a)
+y_b <- rpois(5000,theta_b)
+mean(y_b<y_a)
+```
+
+Thus $p(\tilde{y}_B < \tilde{y}_A) \mid y_A,y_B) = 0.68$
+
+for b)
+
+```{r}
+set.seed(1000)
+n_0 <- 1:100
+result <- rep(0,100)
+theta_a <- rgamma(5000,237,20)
+y_a <- rpois(5000,theta_a)
+for (i in 1:100){
+  theta_b <- rgamma(5000,113+12*n_0[i],13+n_0[i])
+  y_b <- rpois(5000,theta_b)
+  result[i] <- mean(y_b < y_a) 
+}
+plot(n_0, result, type='l')
+
+```
+Even though probability of event { $\tilde{y}_B<\tilde{y}_A$ } is smaller than {$\theta_B < \theta_A$}, it is still usually larger than 0.5 at small prior sample size n_0. However, it significantly more sensitive to change of prior sample size and converges fastly to 0.5. And it even shows smaller probability than 0.5. Thus we can conclude that predictive probability are more sensitive to prior information than posterior distribution of $\theta$

@@ -1,0 +1,307 @@
+---
+title: 'STA 601/360 Homework4'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+library(foreign)
+require(magrittr)
+require(plyr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW4 for STA-601
+
+## Exercise 1
+
+At Exercise 3.3, we have obtained that
+$$
+p(\theta_A \mid y_A) \sim gamma(237,20) \\
+p(\theta_B \mid y_B) \sim gamma(125,14)
+$$
+
+#### a)
+For each s, let $t^{(s)}$ be the sample average of 10 values of $y_A^{(s)}$ divided by the sample standard deviation of $y_A^{(s)}$. Make a histogram of $t^{(s)}$ and compare to the observed value of this statistic. Based on this statistic, assess the fit of poisson model for these data
+
+```{r}
+y_A <- c(12,9,12,14,13,13,15,8,15,6)
+set.seed(1000)
+smpl <- data.frame(matrix(rep(0,10*1000),ncol = 10))
+for(i in 1:1000){
+  theta <- rgamma(1,237,20)
+  ytil <- rpois(10,theta)
+  smpl[i,] <- ytil
+}
+tfunction <- function(x){
+  mean(x)/sd(x)
+}
+tstat <- apply(smpl,1,tfunction)
+
+ggplot(data = NULL, mapping = aes(x = tstat)) +
+  geom_histogram(binwidth = 0.5, color = "skyblue") + 
+  geom_vline(xintercept = tfunction(y_A),col = "red")
+```
+the statistic t that we have obtained from observed sample is very likely according to distributin of statistic t. Thus we can conclude that the poisson model is appropriate model for these data.
+
+#### b)
+
+```{r}
+y_B <- c(11,11,10,9,9,8,7,10,6,8,8,9,7)
+smpl <- data.frame(matrix(rep(0,10*1000),ncol = 10))
+for(i in 1:1000){
+  theta <- rgamma(1,125,14)
+  ytil <- rpois(10,theta)
+  smpl[i,] <- ytil
+}
+tstat <- apply(smpl,1,tfunction)
+
+ggplot(data = NULL, mapping = aes(x = tstat)) +
+  geom_histogram(binwidth = 0.5, color = "skyblue") + 
+  geom_vline(xintercept = tfunction(y_B),col = "red")
+```
+
+On the other hand, statistic t which we have obtained from observed data is verly unlikely according to distribution of statisitc t. Thus Poisson model for these data is not adequate and we need to find another model.
+
+## Exercise2
+
+$$
+\begin{aligned}
+p(\tilde{y} \mid y_1 \cdot\cdot\cdot y_n) = \int\int p(\tilde{y} \mid \theta, \sigma^2)p(\theta \mid \sigma^2)p(\sigma^2)d\sigma^2d\theta
+\end{aligned}
+$$
+where 
+$$
+1/\sigma^2 \mid y_1 \cdot\cdot\cdot y_n \sim gamma(10,2.5) \quad and  \quad \theta \mid \sigma^2,y_1 \cdot\cdot\cdot y_n \sim N(4.1,\frac{\sigma^2}{20})
+$$
+step1 : sample $1/\sigma^{2^{(s)}} \sim gamma(10,2.5)$
+  
+step2 : sample $\theta^{(s)} \sim N(4.1,\frac{\sigma^{2^{(s)}}}{20})$
+  
+step3 : sample $\tilde{y}^{(s)} \sim 0.31N(\theta^{(s)},\sigma^{2^{(s)}}) + 0.46 N(2\theta^{(s)},2\sigma^{2^{(s)}}) + 0.23N(3\theta^{(s)},3\sigma^{2^{(s)}})$
+
+#### a)
+
+Sample at least 5000 y values from the posterior predictive distribution
+
+```{r}
+set.seed(1000)
+y_til_sam <- rep(0,10000)
+for(i in 1:10000){
+  prec <- rgamma(1,10,2.5)
+  sigma <- 1/prec
+  theta <- rnorm(1,4.1,sqrt(sigma/20))
+  y_til <- 0.31*rnorm(1,theta,sqrt(sigma)) + 0.46*rnorm(1,2*theta,2*sqrt(sigma)) +  0.23*rnorm(1,3*theta,3*sqrt(sigma))
+  y_til_sam[i] <- y_til
+}
+```
+
+#### b)
+
+Form a 75% quantile-based confidence interval for a new value of Y
+
+```{r}
+quantile(y_til_sam, c(0.125,0.875))
+ggplot(mapping = aes(x=y_til_sam)) +
+  geom_histogram(color = "skyblue") +
+  geom_vline(color = "red", xintercept = quantile(y_til_sam, c(0.125,0.875))) + 
+  labs(title = "empirical distribution", x = "predicted")
+```
+
+Quantile-based confidence interval for Y is [7.50,8.23]
+
+#### c) Form a 75% HPD region for a new Y as follows:
+
+##### i. 
+Compute estimates of the posterior density of Y using the density command in R, and then normalize the density values so they sum to 1
+
+```{r}
+y_den <- density(y_til_sam)
+bw <- diff(y_den$x)[1]
+sum(y_den$y * bw)
+```
+
+##### ii.
+sort these discrete probabilities in decreasing order.
+
+```{r}
+y_den.2 <- data.frame(y = y_den$x, p = y_den$y)
+y_den.2 <- y_den.2 %>% 
+  arrange(p,decreasing = T)
+```
+
+##### iii.
+Find the first probability value such that the cumulative sum of the sorted values exceeds 0.75. Your HPD region includes all values of y which have a discretized probability greater than this cutoff. Descirbe your HPD region and compare it to your qunatile based region
+
+```{r}
+y_cum <- 0
+i = 1
+repeat{
+  y_cum <- y_cum + y_den.2$p[i]*bw
+  i <- i+1
+  if(y_cum>0.75) break
+}
+HPD <- y_den.2[1:i,]
+range(HPD$y)
+quantile(y_til_sam, c(0.125,0.875))
+```
+
+region of HPD is [7.111, 8.624] and region of qunatile based is [7.115,8.611]. Thus it seems to have very similar interval. 
+
+```{r}
+ggplot(data = y_den.2, mapping = aes(x = y, y = p)) +
+  geom_line(color = "black") +
+  geom_vline(xintercept = c(quantile(y_til_sam, c(0.125,0.875))),color = "red") +
+  geom_vline(xintercept = c(range(HPD$y)),color = "blue")
+```
+
+#### d)
+Can you think of a physical justification for the mixture sampling distribution of Y?
+
+Mixture sampling model of Y assumes that there are three groups of plant which have different weight features. It assumes that plants which have medium weight features have the largest proportion of populations for 46%. Furthemore, it uses additional model to capture property of plants which have very light weight and heavy weight. For lighter weight plant, it uses lower mean and narrow variance so that weight of plant does not have negative values. On the other hand, it uses higher mean and broader variance for heavy weight plant because there isn't specific bound for weight of plant. Thus this mixture sampling distribution can capture considerably broad range of plant's weight.  
+
+## Exercise 3
+
+#### a)
+obtain 5000 samples of y_a
+```{r}
+bach <- read.delim("menchild30bach.dat",sep = " ")
+Y_A <- bach %>%
+  unlist %>%
+  na.omit
+nobach <- read.delim("menchild30nobach.dat",sep = " ")
+Y_B <- nobach %>% 
+  unlist %>%
+  na.omit
+print(c(length(Y_A),sum(Y_A)))
+print(c(length(Y_B),sum(Y_B)))
+```
+As we know that posterior distribution for $\theta \sim gamma(a,b)$ is $gamma(a+n,b+\sum_{i=1}^{n} y_i)$. Thus we can know that
+$$
+\theta_A \sim gamma(22,19) \\
+\theta_B \sim gamma(183,250)
+$$
+Steps for obtaining predictive samples are as below:
+
+step1 : sample $\theta_A^{(s)}$ from $p(\theta \mid y_1 \cdot\cdot\cdot y_n)$
+  
+step2 : sample $\tilde{Y}_A^{(s)}$ from $p(y \mid \theta^{(s)})$
+
+```{r}
+set.seed(1000)
+theta_A <- rep(0,5000)
+theta_B <- rep(0,5000)
+pred_Y_A <- rep(0,5000)
+pred_Y_B <- rep(0,5000)
+for(i in 1:5000){
+  theta_A[i] <- rgamma(1,22,19)
+  theta_B[i]<- rgamma(1,183,250)
+  pred_Y_A[i] <- rpois(1,theta_A)
+  pred_Y_B[i] <- rpois(1,theta_B)
+}
+pred_Y_A_den <- data.frame(density(pred_Y_A)[c("x","y")])
+pred_Y_A_den <- data.frame(cbind(pred_Y_A_den,"A"))
+colnames(pred_Y_A_den) <- c("value","p","model")
+pred_Y_B_den <- data.frame(density(pred_Y_B)[c("x","y")])
+pred_Y_B_den <- data.frame(cbind(pred_Y_B_den,"B"))
+colnames(pred_Y_B_den) <- c("value","p","model")
+pred_Y_den <- rbind(pred_Y_A_den,pred_Y_B_den)
+ggplot(data = pred_Y_den, aes(x = value, y = p, color = model)) +
+  geom_line() +
+  labs(title = "predictive distributin of Y_A, Y_B")
+```
+
+#### b)
+Find 95% quantile-based posterior confidence intervals for $\theta_B - \theta_A$ and $\tilde{Y}_B - \tilde{Y}_A$. Describe in words the differences between the two populations using these quantities and the plots in a), along with any other results that may be of interest to you.
+
+```{r}
+diff_theta <- theta_B - theta_A
+diff_pred <- pred_Y_B - pred_Y_A
+quantile(diff_theta, probs = c(0.025,0.975))
+quantile(diff_pred, probs = c(0.025,0.975))
+mean(diff_theta)
+mean(diff_pred)
+```
+
+When we see the posterior distribution of theta in both population, despite of similar distribution shape, group B has smaller mean and mass on smaller values than group A. Plot in a) also show similar implication that group B has more mass in small values than group A. Thus we can say that group B usually have smaller number of children than group A. This result stems from samples showing different properties. This phenomenon is explicit when we see their posterior mean compared to predictive mean.
+
+#### c)
+Obtain the empirical distribution of the data in group B. Compare this to the Poission distribution with mean 1.4
+
+```{r, error=TRUE}
+set.seed(1000)
+sam <- rpois(length(Y_B),1.4)
+Y_B2 <- Y_B - 0.1
+sam2 <- sam + 0.1
+ggplot() +
+  geom_histogram(data = NULL, mapping = aes(x=Y_B2), fill = "skyblue", binwidth = 0.1) +
+  geom_histogram(data = NULL, mapping = aes(x=sam2), fill = "orange", binwidth = 0.1) + 
+  labs(x = "value", title = "empirical vs poisson")
+```
+
+As we can see at above graph, empirical distribution of group B shows different shape of poisson distribution which has mean 1.4. Empirical distribution has more mass on 0 and less mass on 1 and compared to poisson distribution. Thus I think that this poisson distribution can not consider property of group B and it is not a good model.
+
+#### d)
+
+For each of the 5000 $\theta_B$ values you sampled, sample $n_B$ = 218 poisson random variables and count the number of 0s and the number of 1s in each of the 5000 simulated dataset. 
+
+```{r}
+set.seed(1000)
+zero <- rep(0,length(theta_B))
+one <- rep(0,length(theta_B))
+for(i in 1:length(theta_B)){
+  sample <- rpois(218,theta_B[i])
+  zero[i] <- count(sample)[1,2]
+  one[i] <- count(sample)[2,2]
+}
+zerone <- data.frame(zero = zero, one = one)
+Y_B_count <- count(Y_B)[1:2,2]
+Y_B_count
+ggplot(data = zerone , mapping = aes(x=zero, y=one)) +
+  geom_point() +
+  geom_point(data = data.frame(Y_B_count), mapping = aes(x=Y_B_count[1], y=Y_B_count[2]),size = 5, color = "red" )
+```
+
+Sampled set of number of zero and one is too far from our observed data as we can see at above plot. Thus Poisson model is not adequate for observed data.
+
+## Exercise 4
+
+Let $y_1 \cdot\cdot\cdot y_n \mid \alpha,\beta$ be iid gamma with $\alpha$ known.
+
+#### 1)
+Find conjugate family for prior $\beta$
+$$
+\begin{aligned}
+p(y \mid \alpha,\beta) &= \frac{\beta^{-\alpha}}{\Gamma(\alpha)}Y^{\alpha-1}e^{-\beta y} \\
+&\rightarrow p(y_1 \cdot\cdot\cdot y_n \mid \alpha,\beta) \propto \beta^{-n\alpha}exp\{-\beta\sum_{i=1}^ny_i\}
+\end{aligned}
+$$
+Thus conjugate family for $\beta$ should include $\beta^{c_1}exp\{c_2\beta\}$.
+Among exponential family, gamma distribution have same shape. i.e. $p(\beta) \sim \frac{b^a}{\Gamma(a)}\beta^{a-1}exp\{-b\beta\}$.
+
+Therefore, we can conclude that gamma distribution is one of conjugate family for $\beta$ in this model.
+
+#### 2)
+
+$$
+\begin{aligned}
+p(\beta \mid y_1 \cdot\cdot\cdot y_n) &\propto p(y_1 \cdot\cdot\cdot y_n \mid \alpha, \beta)p(\beta) \quad and \; \alpha \; is \; known \\
+&\propto \beta^{n\alpha} exp\{-\beta\sum_{i=1}^{n} y_i\} \times \beta^{a-1}exp\{-\beta b\} \\
+&= \beta^{a+n\alpha -1}exp\{-\beta(b+\sum_{i=1}^{n} y_i)\} \sim gamma(a+n\alpha,b+\sum_{i=1}^{n} y_i)
+\end{aligned}
+$$
+
+Thus 
+$$
+p(\beta \mid y_1 \cdot\cdot\cdot y_n) = \frac{b+\sum_{i=1}{n} y_i}{\Gamma(a + n\alpha)} \beta^{a+n\alpha-1}exp\{-\beta(b+\sum_{i=1}^{n} y_i)\}
+$$
+
+#### 3)
+
+For prior distribution of $\beta \sim gamma(a,b)$, a is the number of prior observations and b is sum of prior observation's values. The reason for the inference is that a is updated with the number of observation we obtain. On the other hand, b is updated with sum of observation's sum. If we treat our conjugate prior distribution as posterior distribution which updated with prior observation, a become the number of prior observation and b become sum of prior observation's values.

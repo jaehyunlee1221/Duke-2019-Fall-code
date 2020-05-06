@@ -1,0 +1,176 @@
+---
+title: 'STA 601/360 Homework5'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+library(foreign)
+require(magrittr)
+require(plyr)
+require(rstan)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW5 for STA-601
+
+## Exercise 1
+Given {$\bar{y_A} = 75.2, s_A = 7.3$}, {$\bar{y_A} = 77.5, s_B = 8.1$} with conjugate prior $\mu_0 = 75, \sigma_0^2 = 100$. For each {(1,1)(2,2)(4,4)(8,8)(16,16),(32,32)} obtain $p(\theta_A < \theta_B \mid y_A,y_B)$ via Monte carlo sampling. Plot this probability as a function of $(k_0,v_0)$. Describe how you might use this plot to convey the evidence that $\theta_A < \theta_B$ to people of a variety of prior opinions
+
+$$
+When \; y_1 \cdot\cdot\cdot y_n \sim iid\; N(\theta,\sigma^2), \quad p(y_1 \cdot\cdot\cdot y_n \mid \theta,\sigma^2) = (2\pi)^{-2/n}(\sigma^2)^{-2/n}exp\{-\frac{\sum(y_i -\theta)^2}{\sigma^2}\}
+$$
+
+$$
+When \; \theta\mid\sigma^2 \sim N(\mu_0,\frac{\sigma_0^2}{k_0}), \quad p(\theta\mid\sigma^{2}) = (2\pi)^{-1/2} (\frac{\sigma^2}{k_0})^{-1/2}exp\{-\frac{k_0(\theta-\mu_0)^2}{2\sigma^2}\}
+$$
+
+$$
+\begin{aligned}
+Let \; 1/\sigma^2 \; be \; \lambda \\ \\
+p(\theta \mid y_1 \cdot\cdot\cdot y_n,\lambda) &\propto p(\theta\mid\lambda)p(y_1 \cdot\cdot\cdot y_n \mid \theta, \lambda) \\
+&\propto exp\{-\frac{\lambda}{2}(n\theta^2 -2\sum y_i \theta + k_0\theta^2 -2k_0\mu_0) \} \\
+&= exp\{-\frac{\lambda(k_0+n)}{2}[\theta^2 - \frac{2}{k_0+n}(n\bar{y}+k_0\mu_0)] \} \\
+&\propto exp\{-\frac{\lambda(k_0+n)}{2}[\theta^ - \frac{1}{k_0+n}(n\bar{y}+k_0\mu_0)]^2 \}\\
+&\rightarrow  \theta \mid y_1 \cdot\cdot\cdot y_n, \lambda \sim N(\frac{n\bar{y}+k_0\mu_0}{k_0 +n},1/\lambda(k_0+n))
+\end{aligned}  
+$$
+
+$$
+\begin{aligned}
+\lambda \sim gamma(\frac{v_0}{2}, \frac{v_0\sigma_0^2}{2}), \; Then\\ \\
+p(\lambda\mid y_1 \cdot\cdot\cdot y_n) &\propto p(\lambda)\int p(y_1 \cdot\cdot\cdot y_n \mid \lambda,\theta)p(\theta\mid\lambda)d\theta \\
+&\propto \lambda^{v_0/2 -1}exp\{-\lambda(v_0\sigma_0^2)/2\} \times \lambda^{n/2}exp\{-\frac{\lambda}{2}((n-1)S^2 + \frac{nk_0}{k_n}(\bar{y} - \mu_0 )^2) \} \\
+&\propto \lambda^{\frac{v_0+n}{2}-1}exp\{-\frac{\lambda}{2}[v_0\sigma^2 + (n-1)S^2 + \frac{nk_0}{k_n}(\bar{y} - \mu_0)^2] \} \\
+&\rightarrow \lambda \sim gamma((v_0 + n)/2,[v_0\sigma^2 + (n-1)S^2 + \frac{nk_0}{k_n}(\bar{y} - \mu_0)^2]/2) 
+\end{aligned}
+$$
+
+Thus 
+
+#### a)
+
+```{r prior setup}
+n <- 16
+mu0 <- 75
+sigma0 <- 100
+k0 <- 2^seq(0,8,1)
+v0 <- k0
+stat <- data.frame(matrix(c(75.2,77.5,7.3,8.1),nrow=2))
+colnames(stat) <- c("mean","sd")
+kn <- k0 + n
+vn <- v0 + n
+theta_A <- matrix(rep(NA,length(k0)*10000),nrow = 10000)
+theta_B <- matrix(rep(NA,length(k0)*10000),nrow = 10000)
+```
+
+```{r monte carlo}
+set.seed(1000)
+for(i in 1:length(k0)){
+  for(j in 1:10000){
+    prec_A <- rgamma(1, vn[i]/2, ((v0[i]*sigma0 + (n-1)*stat$sd[1]^2 + n*  v0[i]/vn[i]*(stat$mean[1] - mu0)^2)/2))
+    sigma_A <- 1/prec_A
+    theta_A[j,i] <- rnorm(1,(n * stat$mean[1] + k0[i] * mu0)/kn[i], sqrt(sigma_A/kn[i]))
+    
+    prec_B <- rgamma(1,vn[i]/2, ((v0[i]*sigma0 + (n-1)*stat$sd[2]^2 + n*  v0[i]/vn[i]*(stat$mean[2] - mu0)^2)/2))
+    sigma_B <- 1/prec_B
+    theta_B[j,i] <- rnorm(1,(n * stat$mean[2] + k0[i] * mu0)/kn[i], sqrt(sigma_B/kn[i]))
+  }
+}
+p <- rep(NA,length(k0))
+for(i in 1:length(k0)){
+  p[i] <- mean(theta_A[,i]<theta_B[,i])  
+}
+result <- data.frame(cbind(k0,p))
+ggplot(result, mapping = aes(x= k0, y=p)) +
+  geom_line() +
+  geom_point()
+  labs(title = "p(theta_B > theta_A) vs k0")
+```
+
+When prior sample size $k_0 = v_0$ is small, observations which support $\theta_B>\theta_A$ dominate posterior distribution which means prior information have less credibility. As a result when $k_0$ is small, probability $\theta_B>\theta_A$ is very large. But as prior sample size grow, we can see that probability $\theta_B>\theta_A$ decreases which means that prior information which support idea that their mean is same have more credibility than before as prior sample size gets bigger.
+
+#### b)
+
+```{r stan, warning=FALSE, message=FALSE}
+set.seed(1000)
+n <- 16
+k0 <- 2^seq(0,8,1)
+p2 <- rep(NA,length(k0))
+y_A <- y_B <- 10
+while(!(near(mean(y_A),75.2,tol = 0.1) & near(sd(y_A),7.3,tol = 0.1))){
+  y_A <- rnorm(n = n, 75.2, 7.3)
+}
+while(!(near(mean(y_B),77.5,tol = 0.1) & near(sd(y_B),8.1,tol = 0.1))){
+  y_B <- rnorm(n = n, 77.5, 8.1)
+}
+c(mean(y_A),mean(y_B))
+c(sd(y_A),sd(y_B))
+mystan <- rstan::stan_model("hmc_norm_example.stan")
+for(i in 1:length(k0)){
+  stan_res_A <- rstan::sampling(mystan, data = list(X = y_A, 
+                                                             N = n, 
+                                                             Sigma = 7.3, K = k0[i]),
+                        chains = 1, iter = 600, warmup = 100, verbose = F, refresh = 0) %>%
+            rstan::extract()
+  stan_res_B <- rstan::sampling(mystan, data = list(X = y_B, 
+                                                             N = n, 
+                                                             Sigma =8.1, K = k0[i]),
+                        chains = 1, iter = 600, warmup = 100, verbose = F, refresh = 0) %>%
+            rstan::extract()
+  
+  p2[i] <- mean(stan_res_A$theta < stan_res_B$theta)
+}
+result <- data.frame(cbind(k0,p2))
+ggplot(result, mapping = aes(x= k0, y=p2)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "p(theta_B > theta_A) vs k0 via stan")
+
+```
+Even though, it has not exactly same shape with above result, it also decreases from over 0.8 to 0.5
+
+
+
+## Exercise2
+The Jeffreys joint prior for the normal ($\theta$ and  $\sigma^2$) is given by
+$$p_J(\theta,1/\sigma^2)\propto (\sigma^{-2})^{3/2}.$$
+Let precision parameter be $\lambda = 1/\sigma^2$.
+Then $p(\theta,\lambda) \propto \lambda^{2/3}$ and $\int p(\theta,\lambda)d\theta=p(\lambda) \propto \lambda^{2/3}$.
+That is $p(\theta \mid \lambda) \propto 1$
+
+$$
+\begin{aligned}
+p(y_1 \cdot\cdot\cdot y_n \mid \theta,\lambda) &= \prod_{i=1}^{n} (2\pi)^{-1/2} \lambda^{1/2}exp\{-\frac{\lambda(y_i-\theta)^2}{2}\} \\
+&\propto \lambda^{n/2}exp\{-\frac{\lambda\sum(y_i-\theta)^2}{2}\}
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+p(\theta,\lambda \mid y_1 \cdot\cdot\cdot y_n) &\propto p(\theta,\lambda)p(y_1 \cdot\cdot\cdot y_n \mid \theta,\lambda) \\
+&\propto \lambda^{3/2} \times \lambda^{n/2}exp\{-\frac{\lambda \sum(y_i - \theta)^2}{2} \} \\
+&= \lambda^{\frac{3+n}{2}}exp\{-\frac{\lambda}{2}(\sum y_i^2 -2\theta\sum y_i + n\theta^2)\} \\
+&= \lambda^{\frac{3+n}{2}}exp\{-\frac{n\lambda}{2}(\theta^2 -2\bar{y}\theta + \bar{y}^2) + \frac{\lambda n \bar{y}}{2} -\frac{\lambda\sum y_i^2}{2} \} \\
+&= \lambda^{\frac{3+n}{2}}exp\{-\frac{\lambda}{2}(\sum y_i^2 - n\bar{y}^2)\}exp\{-\frac{n\lambda}{2}(\theta - \bar{y})^2\} \\
+&= \underbrace{\lambda^{\frac{3+n}{2}}exp\{-\frac{\lambda}{2}\sum(y_i - \bar{y})^2\}}_{kernal \; of \; gamma} \underbrace{exp\{-\frac{n\lambda}{2}(\theta - \bar{y})^2\}}_{kernal \; of \; normal }
+\end{aligned}
+$$
+We can factorize above equation.
+Thus we can conclude that 
+$$
+\begin{aligned}
+p(\theta \mid \lambda, y_1 \cdot\cdot\cdot y_n) \sim N(\bar{y}, \frac{\sigma^2}{n}) \\
+p(\lambda \mid y_1 \cdot\cdot\cdot y_n) \sim gamma(\frac{5+n}{2},\frac{\sum(y_i - \bar{y})^2}{2})
+\end{aligned}
+$$
+As a result, we can know that posterior distribution is proper because
+$$
+\int\int p(\theta,\lambda \mid y_1 \cdot\cdot\cdot y_n)d\theta d\lambda \propto \int \lambda^{\frac{3+n}{2}}exp\{-\frac{\lambda}{2}\sum(y_i - \bar{y})^2\} d\lambda \propto 1
+$$

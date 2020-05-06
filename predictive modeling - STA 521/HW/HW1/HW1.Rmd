@@ -1,0 +1,245 @@
+---
+title: "STA521 HW1"
+author: '[Jae Hyun Lee and jl914]'
+date: "Due Wednesday September 4, 2019"
+output:
+ pdf_document: default
+ html_notebook: default
+ html_document:
+   df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+# add other libraries here
+```
+
+This exercise involves the Auto data set from ISLR.  Load the data and answer the following questions adding your code in the code chunks. Please submit a pdf version to Sakai.  For full credit, you should push your final Rmd file to your github repo on the STA521-F19 organization site by the deadline  (the version that is submitted on Sakai will be graded)
+
+```{r data, echo=F}
+data(Auto)
+```
+
+## Exploratory Data Analysis
+1. Create a summary of the data.  How many variables have missing data?
+
+```{r exercise1}
+outlook_auto <- summary(Auto)
+any(is.na(Auto))
+outlook_auto
+str(Auto)
+```
+  
+answer : no missing data in this data set  
+   
+     
+    
+2.  Which of the predictors are quantitative, and which are qualitative?
+```{r}
+str(Auto)
+```
+   
+answer: I can find that only name is qualitative predictor which has 304 levels and the other predictors are numeric quantitative.    
+   
+3. What is the range of each quantitative predictor? You can answer this using the `range()` function.   Create a table with variable name, min, max with one row per variable.   `kable` from the package `knitr` can display tables nicely.   
+   
+```{r}
+library(knitr)
+num_var <- ncol(Auto)-1
+range_table <- matrix(rep(0,3*num_var),nrow = num_var)
+range_table <- as.data.frame(range_table)
+for(i in 1:(ncol(Auto)-1)){
+  range_table[i,] <- c(colnames(Auto)[i],range(Auto[,i]))
+}
+colnames(range_table) <- c("variable name","min","max")
+kable(range_table)
+
+```
+
+4. What is the mean and standard deviation of each quantitative predictor?  _Format nicely in a table as above_
+
+```{r}
+num_var <- ncol(Auto)-1
+mv_table <- matrix(rep(0,3*num_var),nrow = num_var)
+mv_table <- as.data.frame(mv_table)
+for(i in 1:num_var){
+  mv_table[i,] <- c(colnames(Auto)[i],
+                   round(mean(Auto[,i]),digits = 3),round(sd(Auto[,i]),digits = 3))
+}
+colnames(mv_table) <- c("variable name","mean","standard deviation")
+kable(mv_table)
+```
+   
+   
+5. Investigate the predictors graphically, using scatterplot matrices  (`ggpairs`) and other tools of your choice. Create some plots
+highlighting the relationships among the predictors. Comment
+on your findings.  _Try adding a caption to your figure_
+```{r}
+library(GGally)
+all_gp <- ggpairs(Auto, columns = c(1:8))
+all_gp <- all_gp + 
+  labs(title = "Relatioship between all quantative predictors",
+       caption = "There is strong positive relationship between horsepower and weight,displacement,cylinder")
+all_gp
+  
+hlgt_gp <- ggpairs(Auto, columns = c(2:5))
+hlgt_gp <- hlgt_gp +
+  labs(title = "Relatioship between horsepower and engine size related variables",
+       caption = "They have strong and positive relationship each other")
+hlgt_gp  
+```
+
+
+6. Suppose that we wish to predict gas mileage (mpg) on the basis of the other variables using regression. Do your plots suggest that any of the other variables might be useful in predicting mpg using linear regression? Justify your answer.
+   
+```{r}
+mpg_gp <- ggpairs(Auto, columns = c(1,5,7))
+mpg_gp <- mpg_gp +
+  labs(title = "Relationship of mgp with weight and year",
+       caption = "both variable shows different relationship with mpg")
+mpg_gp
+```
+   
+answer: weight and year variables show different relation with mpg each other. If I include variables related with enjine size or power, there would be collinearity problem. Thus I choose variable which has the strongest negative linear relationship with mpg. On the other hand, year has shown positive linear relationship with mpg. In consequence it can improve model by providing other information that weight cannot give.   
+   
+## Simple Linear Regression
+   
+7.  Use the `lm()` function to perform a simple linear 
+regression with `mpg` as the response and `horsepower` as the
+predictor. Use the `summary()` function to print the results.
+Comment on the output.
+For example:
+    (a) Is there a relationship between the predictor and the response?
+    (b) How strong is the relationship between the predictor and
+the response?
+    (c) Is the relationship between the predictor and the response
+positive or negative?
+    (d)  Provide a brief interpretation of the parameters that would suitable for discussing with a car dealer, who has little statistical background.
+    (e) What is the predicted mpg associated with a horsepower of
+98? What are the associated 95% confidence and prediction
+intervals?   (see `help(predict)`) Provide interpretations of these for the car dealer.
+
+```{r}
+lm_mgp <- lm(mpg~horsepower, data = Auto)
+cor(Auto$mpg,Auto$horsepower)
+summary(lm_mgp)
+```
+
+(a) I can find that they have relationship with strong evidence of t-test's p-value
+(b) Although, I cannot find the strength of relationship through regression summary, I can find it using correlation function
+(c) regression result show negative relationship
+(d) There is tendency that the cars with small horsepower usually have higher mpg. That is they are more efficient car.
+
+8. Plot the response and the predictor using `ggplot`.  Add to the plot a line showing the least squares regression line. 
+```{r}
+ggplot(data = Auto, mapping = aes(x=horsepower,y=mpg)) +
+  geom_point() +
+  geom_abline(intercept =lm_mgp$coefficients[1],slope =lm_mgp$coefficients[2],colour="red")
+```
+
+9. Use the `plot()` function to produce diagnostic plots of the least squares regression fit. Comment on any problems you see with the model regarding assumptions for using a simple linear regression.  
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm_mgp)
+```
+
+  
+1. When I see residual vs fitted plot, the line in graph shows that there is unlinear relationship between two variables  
+2. other graphs show that there isn't severe violation of assumption which are normality, and outliers
+
+
+## Theory
+
+
+
+10. Show that the  regression function $E(Y \mid x) = f(x)$ is the optimal 
+optimal predictor of $Y$ given $X = x$ using squared error loss:  that is $f(x)$
+minimizes $E[(Y - g(x))^2 \mid X =x]$ over all functions $g(x)$ at all points $X=x$.   _Hint:  there are at least two ways to do this.   Differentiation (so think about how to justify) - or - add and subtract the proposed optimal predictor and who that it must minimize the function._
+
+answer: There are two ways to show above results. First,
+$$
+\begin{aligned}
+(Y - g(x))^{2} &= (Y  - f(x) + f(x) - g(x))^{2} \\
+&= (Y-f(x))^{2} + (f(x) - g(x))^{2} + 2(Y-f(x))(f(x)-g(x)) \\ 
+\end{aligned}
+$$
+Then 
+$$
+\begin{aligned}
+E(Y-g(x))^{2} \mid X=x) = E[(Y-f(x))^{2} \mid X] \\ +
+E[(f(x)-g(x))^{2} \mid X] + 2(f(x)-g(x))E[(Y-f(x)]
+\end{aligned}
+$$
+ Last term of above equation is 0 because $f(x) = E(Y \mid X)$ and first term is $var(Y \mid X)$. Furthermore, second term is non-negative because it is quadratic form and it has minimum value when $g(x) = f(x)$. Consequently, $f(x)$ is optimal predictor.  
+
+Second, 
+$$
+\begin{aligned}
+E[Y^{2} + 2Yg(x) + g(x)^{2}] &= E(Y^{2}) - 2f(x)g(x) + g(x)^{2} \\
+&= var(Y \mid X) + f(x)^{2} -2f(x)g(x) + g(x)^{2}
+\end{aligned}
+$$
+To find minimize above equation, I take derivative regard to $g(x)$
+$$
+{d \over dg(x)} (var(Y \mid X) + f(x)^{2} -2f(x)g(x) + g(x)^{2}) \\
+= -2f(x) + 2g(x). 
+$$
+Thus when $g(x) = f(x)$ has minimum.
+
+11. (adopted from ELS Ex 2.6 ) Suppose that we have a sample of $N$ pairs $x_i, y_i$ drwan iid from the distribution characterized as follows 
+$$ x_i \sim h(x), \text{ the design distribution}$$
+$$ \epsilon_i \sim g(y), \text{ with mean 0 and variance } \sigma^2 \text{ and are independent of the } x_i $$
+$$Y_i = f(x_i) + \epsilon$$
+  (a) What is the conditional expectation of $Y$ given that $X = x_o$?  ($E_{Y \mid X}[Y]$)
+  (b) What is the conditional variance of $Y$ given that $X = x_o$? ($\text{Var}_{Y \mid X}[Y]$)
+  (c) show  that for any estimator $\hat{f}(x)$ that the conditional (given X) (expected)  Mean Squared Error can be decomposed as 
+$$E_{Y \mid X}[(Y - \hat{f}(x_o))^2] = \underbrace{ \text{Var}_{Y \mid X}[\hat{f}(x_o)]}_{\textit{Variance of estimator}} +
+\underbrace{(f(x) - E_{Y \mid X}[\hat{f}(x_o)])^2}_{\textit{Squared Bias}} + \underbrace{\textsf{Var}(\epsilon)}_{\textit{Irreducible}}
+$$
+ _Hint:  try the add zero trick of adding and subtracting expected values_
+  (d) Explain why even if $N$ goes to infinity the above can never go to zero.
+e.g. even if we can learn $f(x)$ perfectly that the error in prediction will not vanish.   
+  (e) Decompose the unconditional mean squared error
+$$E_{Y, X}(f(x_o) - \hat{f}(x_o))^2$$
+into a squared bias and a variance component. (See ELS 2.6(c))
+  (f) Establish a relationship between the squared biases and variance in the above Mean squared errors.
+
+answer: 
+
+(a) $$
+    E(Y \mid X=x_{0}) = E(f(x_{0} + \varepsilon \mid X=x_{0}) =f(x_{0})
+		$$  
+										 
+(b) $$var(Y \mid X=x_{0}) = var(f(x_{0})) + \sigma^{2}$$  
+  
+(c) Let $E(\hat{f}(x_{0})) = m$, 
+Then
+$$
+\begin{aligned}
+(Y - \hat{f}(x_{0}))^{2} &= (f(x) + \varepsilon - \hat{f}(x_{0}))^{2} \\
+&= (f(x) + \varepsilon -m +m - \hat{f}(x_{0}))^{2} \\
+&= (\hat{f}(x_{0}) - m)^{2} + (f(x) -m)^{2} + \varepsilon^{2} +Crossproduct
+\end{aligned}
+$$
+where expectation of crossproduct is 0
+Thus expectation of equation is
+$$ var(\hat{f}(x_{0})) + (f(x) - E(\hat{f}(x_{0}))^{2} + \sigma^{2} $$
+$var(\hat{f}(x_{0}))$ is variance of estimator,  
+$(f(x) - E(\hat{f}(x_{0}))^{2}$ is squared bias,  
+$\sigma^{2}$ is variance of $\varepsilon$.
+
+(d) If $\hat{f}(x)$ is consistent estimator for $f(x)$ then as $n \to \infty$, bias and variance of estimator will be reduced into 0. But variance of $\varepsilon$ is not reduced.
+
+(e) Like (c\), let $E(\hat{f}(x_{0})$ be $m$.   
+Then,   
+$$
+\begin{aligned}
+E[(f(x_{0})-\hat{f}(x_{0})^{2}] &= E[(f(x_{0}) - m + m - \hat{f}(x_{0})^{2}] \\ 
+&= E[(f(x_{0}) - m)^{2}] + E[(\hat{f}(x_{0})-m)^{2}] + (f(x_{0})-m)E[(\hat{f}(x_{0})-m)] \\ 
+&= var(\hat{f}(x_{0})) + Bias(\hat{f}(x_{0}))^{2}
+\end{aligned}
+$$
+
+(f) If MSE is fixed, then variance and bias of estimator is trade-off relationship.

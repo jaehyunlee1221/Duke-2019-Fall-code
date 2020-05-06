@@ -1,0 +1,563 @@
+---
+title: "HW3 Team 04"
+author: "Linlin Li (ll360), Bingruo Wu (bw199), and Jae Hyun Lee (jl914)"
+date: "Sep 24th"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+devtools::install_github("thomasp85/patchwork")
+library(arm)
+library(foreign)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(knitr)
+library(stringr)
+# add other libraries
+```
+
+We will explore logistic regression with the National Election Study data from Gelman & Hill (GH).  (See Chapter 4.7 for descriptions of some of the variables and 5.1 of GH for initial model fitting).  The link here may also be useful for background information http://gking.harvard.edu/files/preelection.pdf or 
+http://www.icpsr.umich.edu/cgi-bin/file?comp=none&study=8475&ds=1&file_id=1196048&path=ICPSR
+
+```{r data, include=FALSE}
+# Data are also at http://www.stat.columbia.edu/~gelman/arm/examples/nes
+
+nes <- read.dta("nes5200_processed_voters_realideo.dta",
+                   convert.factors=F)
+
+# the following provide some details about variables, but data set is not well documented
+# 
+#attributes(nes)$label.table
+#attributes(nes)$var.labels 
+
+
+# Data cleaning
+# remove NA's for key variables first
+nes1992 = nes %>% filter(!is.na(black)) %>%
+              filter(!is.na(female)) %>%
+              filter(!is.na(educ1)) %>%
+              filter(!is.na(age)) %>%
+              filter(!is.na(state)) %>%
+              filter(!is.na(income)) %>%
+              filter(presvote %in% 1:2) %>% 
+# limit to year 19922 t0 2000 and add new varialbes
+              filter(year == 1992) %>%
+              mutate(female = gender -1,
+                     black=race ==2,
+# recode vote so that vote = 1 corresponds to a vote for Bush,
+# and vote=0 is a vote for Clinton, where votes for Ross Perot were 
+# removed earlier                     
+                     vote = presvote == 2)
+```
+
+1. Summarize the data for 1992 noting which variables have missing data. Can you think of any reasons why they might be missing?  Which variables are categorical but are coded as numerically?
+
+```{r summary, warning=FALSE}
+na_count <- summary(nes1992)[7,]
+na_count <- as.matrix(cbind(attributes(nes)$var.label,na_count))
+na_count <- na_count[!is.na(na_count[,2]),]
+na_count[,2] <- as.numeric(unlist(str_extract_all(na_count[,2],"[1-9]+[0-9]*")))
+kable(na_count, col.names = c("variable description","number of NA"),
+      caption = "Summary of variables have missing data")
+```
+
+Variables that have missing data are:
+
+`black`, `female`, `educ1`, `age`, `state`, `income`, `presvote`, `occup1`, `union`, `religion`, `martial_status`, `occup2`, `icpsr_cty`, `partyid7`, `partyid3`, `partyid3_b`, `str_partyid`, `father_party`, `mother_party`, `dem_therm`, `rep_therm`, `regis`, `presvote_intent`, `ideo_feel`, `ideo7`, `ideo`, `cd`, `rep_pres_intent`, `real_ideo`, `presapprov`, `perfin1`, `perfin2`, `perfin`, `newfathe`, `newmouth`, `parent_party`.
+
+One reason is that if there are no questions about these variables in the 1992 survey, then these variables should have missing in `nes1992`. For instance, `icpsr_cty variable` only includes data from 1968 to 1982, thus it automatically have `NA` in `nes1992`. This is also the case with `perfin2` and `regis`.
+
+Secondly, some of the respondents may refuse to answer questions about personal privacy, such as occupation(`occup1` and `occup2`), religion, marital status(`marital_status`), and union membership(`union`). 
+
+The third reason is that some of the respondent may refuse to answer the ideo related questions, so variables like `ideo_feel` and `ideo7` have missing data. 
+
+Fourthly, maybe some of the respondents don't know others' political party preference, so `father_party`, `mother_party`, and `parent_party` have missing data.
+
+
+
+Categorical variables but coded numerically are: 
+
+`gender`, `race`, `educ1`, `urban`, `region`, `income`, `occup1`, `union`, `religion`, `educ2`, `educ3`, `martial_status`, `occup2`, `partyid7`, `partyid3`, `partyid3_b`, `str_partyid`, `father_party`, `mother_party`, `dlikes`, `rlikes`, `regisvote`, `presvote`, `presvote_2party`, `presvote_intent`, `ideo7`, `ideo`, `cd`, `state`, `inter_pre`, `inter_post`, `female`, `rep_presvote`, `rep_pres_intent`, `south`, `real_ideo`, `presapprov`, `perfin1`, `perfin`, `presadm`, `newfathe`, `newmoth`, `parent_party`, `white`.
+
+
+
+2. Fit the logistic regression to estimate the probability that an individual would vote Bush (Republican) as a function of `income` and provide a summary of the model.
+
+We treated `income` as a categorical variable, even though it is coded as numerically in the data set, because the difference between each level of income may be different.
+
+```{r glm1}
+glm_fit.1 <- glm(vote ~ factor(income), data = nes1992, family = binomial(link=logit))
+kable(summary(glm_fit.1)$coef, digits=4, 
+      caption = "Summary for glm(vote ~ factor(income))")
+```
+
+Based on the summary, at the significance level of 0.05, `factor(income)3`, `factor(income)4`, and `factor(income)5` have a statistically significant effect on the odds ratio for voting Republican, showing that there is a correlation between voting and income. Since the coefficients of `factor(income)2`, `factor(income)3`, `factor(income)4`, and `factor(income)5` are estimated to be positive and incremental, it indicates that a rich person is more likely to vote Republican than a poor person. 
+
+However, the residual deviance of this model is 1555.8 on 1174 degrees of freedom. Compared to the null model, the reduction of deviance is not very large, we may need to add new variables to the model.
+
+
+
+
+3. Obtain a point estimate and create a 95% confidence interval for the odds ratio for voting Republican for a rich person (income category 5) compared to a poor person (income category 1). Provide a sentence interpreting the result.
+
+Model: $$log(\pi_{poor}/(1-\pi_{poor})) = {\beta_0},$$
+$$log(\pi_{rich}/(1-\pi_{rich}))={\beta_0} + {\beta_4},$$      $$log(\frac{\pi_{rich}/(1-\pi_{rich})}{\pi_{poor}/(1-\pi_{poor})}) = {\beta_4}.$$
+So, in order to compare the odds ratio for a rich person and a poor one, we need to estimate ${\beta_4}$.
+
+Using the invariance property of the MLE allows us to exponentiate to get $e^{\beta_j\pm z^*SE(\beta_j)}$, where $j=0,1,2,3,4$, which is the confidence interval on the odds ratio.
+
+```{r point estimate and CI for income5, message=FALSE}
+odds <- exp(glm_fit.1$coefficients[5]) # point estimate
+names(odds)=c("Estimate")
+table=c(odds,exp(confint(glm_fit.1, level =0.95)[5,])) # CI
+kable(t(table),caption = "Estimate of factor(income)5",digits = 4)
+```
+
+The point estimate for ${\beta_4}$ is 3.4481, indicating that the odds ratio for a rich person (income category 5) to vote Republican is 3.4481 times that for a poor person (income category 1). A 95% confidence interval for ${\beta_4}$ is [1.8797, 6.4162], which means that we are 95% confident that the odds ratio of voting Republican for a rich person is 1.8797 to 6.4162 times that of a poor person.
+
+
+4.  Obtain fitted probabilities and 95% confidence intervals for the income categories using the `predict` function.  Use `ggplot` to recreate the plots in figure 5.1 of Gelman & Hill.
+
+```{r fitted and CI for income5, message=FALSE}
+incomes <- sort(unique(nes1992$income),decreasing = F)
+fit_CI_income <- data.frame(matrix(rep(0,3*length(incomes)),nrow = length(incomes)))
+for(i in seq_along(incomes)){
+  glm_pred <- predict(glm_fit.1, newdata = data.frame(income = i),
+                      type = "response",se.fit = T)
+  fit_CI_income[i,1] <- glm_pred$fit
+  fit_CI_income[i,2] <- glm_pred$fit + glm_pred$se.fit * qnorm(0.025)
+  fit_CI_income[i,3] <- glm_pred$fit + glm_pred$se.fit * qnorm(0.975)
+}
+colnames(fit_CI_income) <- c("fitted","2.5%","97.5%")
+rownames(fit_CI_income) <- paste("factor(income)",1:5)
+kable(fit_CI_income, digits = 4,
+      caption = "Fitted probabilities and 95% confidence intervals for
+      the odds ratio for voting Republican with different income categories in 1992")
+```
+
+```{r plot fitted and CI, fig.height=4, fig.width=8, fig.cap="Logistic regression estimating the probability of supporting George Bush in the 1992 presidential election, as a function of discretized income level. (a) Fitted logistic regression: the thick line indicates the curve in the range of the data; the thinner lines at the end show how the logistic curve approaches 0 and 1 in the limits. (b) In the range of the data, the solid line shows the best-fit logistic regression, and the light lines show uncertainty in the fit."}
+plot1 <- ggplot(data = nes1992, 
+                mapping = aes(x = income, y = as.numeric(vote))) +
+          geom_jitter(width = 0.3, height = 0.05, size = 0.5) + 
+          geom_smooth(method = "glm", 
+                      method.args = list(family = "binomial"), 
+                      size = 1.5, se = F, col = "black") +
+          geom_smooth(method = "glm", 
+                      method.args = list(family = "binomial"), 
+                      size = 0.5 , fullrange = T, se = F, col = "black") +
+          xlim(-1,7) + 
+          labs(x = "income" , y = "vote") +
+          theme_bw()
+
+plot2 <- ggplot(data = nes1992,
+                mapping = aes(x = income, y = as.numeric(vote))) +
+  geom_jitter(width = 0.3, height = 0.05, size = 0.5) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              size = 1, se = T, col = "black", fullrange = T) +
+  labs(x = "income" , y = "vote") +
+  theme_bw() +
+  xlim(0,6)
+plots <- plot1 + plot2
+plots
+```
+
+According to Table 4 and Figure 1, the fitted probabilities for the income categories are incremental, showing the positive correlation between wealth and voting Republican. 
+
+5.  What does the residual deviance or any diagnostic plots suggest about the model?  (Do provide code for p-values and output and plots)
+
+```{r analysis of deviance}
+kable(anova(glm_fit.1, test = "Chisq"), caption = "Analysis of deviance for the model")
+```
+
+```{r deviance and diagnostics, fig.height=9, fig.width=9, fig.cap="Diagnostic plots"}
+p_val <-pchisq(glm_fit.1$deviance,glm_fit.1$df.residual,lower.tail=F)
+p_val
+par(mfrow=c(2,2))
+plot(glm_fit.1)
+```
+
+When we see the result of chisq test of residual deviance, it shows that it is very unlikely to have this large residual deviance if the model is good model. Thus we can conclude that the model have lack of fit problem. 
+
+Diagnostic plot of this model does not provide adequate assessment about model at all. For normal QQ plot, it is not needed in this model, because response variable is binary data. Scale-location plot is also not useful because variance of binary data varies according to $\hat{\pi}$. Residual vs fitted plot only shows 2 distinct lines which consist of cases when $y_i = 1$ and $y_i = 0$. 
+
+\newpage
+
+6. Create a new data set by the filtering and mutate steps above, but now include years between 1952 and 2000.
+
+```{r create new data set}
+newnes = nes %>% filter(!is.na(black)) %>%
+              filter(!is.na(female)) %>%
+              filter(!is.na(educ1)) %>%
+              filter(!is.na(age)) %>%
+              filter(!is.na(state)) %>%
+              filter(!is.na(income)) %>%
+              filter(presvote %in% 1:2) %>% 
+              filter(year >= 1952 & year <= 2000) %>%
+              mutate(female = gender -1,
+                     black=race ==2,
+                     vote = presvote == 2)
+```
+
+
+7. Fit a separate logistic regression for each year from 1952 to 2000, using the `subset` option in `glm`,  i.e. add `subset=year==1952`.  For each find the 95% Confidence interval for the odds ratio of voting republican for rich compared to poor for each year in the data set from 1952 to 2000.
+
+Similar to what we have done in Q5, the confidence interval on the odds ratio is exp{$\beta_j\pm z^*SE(\beta_j)$}. Thus using same algorithms, we calculated the confidence interval for odds ratio for each year.
+
+```{r model for each year, message = F}
+years <- unique(newnes$year)
+OR_ci <- data.frame(matrix(rep(0,3*length(years)),ncol = 3))
+for (i in 1:length(years)){
+  glm_fit.2 <- glm(vote ~ factor(income), data = newnes, 
+                 family = binomial(link = logit),
+                 subset = year==years[i])
+  OR_ci[i,1] <- exp(glm_fit.2$coefficients[5])
+  OR_ci[i,2:3] <- exp(confint(glm_fit.2,level = 0.95)[5,])
+}
+colnames(OR_ci) <- c("fitted","2.5%","97.5%")
+rownames(OR_ci) <- paste(years,"yr")
+kable(OR_ci, digits = c(4,4,4),
+      caption = "Fitted probabilities and 95% confidence intervals for the
+      odds ratio for voting Republican for each year from 1952 to 2000")
+```
+
+
+8.  Using `ggplot` plot the confidence intervals over time similar to the display in Figure 5.4. 
+
+You can find our plot at Figure 3
+
+```{r CI over time, fig.height=4, fig.width=6, fig.cap="Coefficient of income (on a 1–5 scale) with 95% confidence interval in logistic regressions predicting Republican preference for president, as estimated separately from surveys from 1952 to 2000."}
+ggplot(data = OR_ci, mapping = aes(x = seq(1952,2000,4), y = fitted)) +
+  geom_point() +
+  geom_linerange(ymin = OR_ci[,2],ymax = OR_ci[,3]) +
+  ylim(0,25) +
+  labs(x = "year", y = "odds ratio") +
+  theme_bw() +
+  geom_abline(slope = 0, intercept = 0, linetype = "dashed")
+```
+
+
+9. Fit a logistic regression using income and year as a factor  with an interaction i.e. `income*factor(year)` to the data from 1952-2000.  Find the log odds ratio for income for each year by combining parameter estimates and show that these are the same as in the respective individual logistic regression models fit separately to the data for each year.
+
+```{r compare simultaneous model and respective model}
+glm_fit.3 <- glm(vote ~ factor(income)*factor(year),data = newnes,
+                 family = binomial(link = logit))
+OR <- rep(0,length(years))
+for (i in 1:length(OR)){
+  if (i == 1){
+    OR[i] <- glm_fit.3$coefficients[5]
+    next 
+  }
+  OR[i] <- glm_fit.3$coefficients[5]+glm_fit.3$coefficients[13+4*i]
+}
+result <- cbind(OR,log(OR_ci[,1]))
+result <- round(result,4)
+result=cbind(result,check=ifelse(all.equal(result[,1],result[,2]),"TRUE","FALSE"))
+colnames(result)=c("simultaneously","respectively","check simultaneously = respectively")
+rownames(result) <- paste(years,"yr")
+kable(result, digits = c(4,4),
+      caption = "Comparison between the estimate for coefficient of income in the
+      all model with interaction and that in the respective individual models")
+```
+
+In Table 7, we found that the estimated coefficients of log odds ratio for income for each year are the same as in the respective individual logistic regression models for each year, which is consistent with our intuition. 
+
+10.  Create a plot of fitted probabilities and confidence intervals as in question 4, with curves for all years in the same plot. 
+
+```{r fitted and CI for model with all years, fig.cap="Logistic regression estimating the probability of supporting George Bush from 1952 to 2000, as a function of discretized income level. (a) Fitted logistic regression: the thick line indicates thecurve in the range of the data; the thinner lines at the end show how the logistic curve approaches 0 and 1 inthe limits. (b) In the range of the data, the solid line shows the best-fit logistic regression, and the light linesshow uncertainty in the fit.", fig.width=8, fig.height=10}
+plot1 <- ggplot(data = newnes,
+                mapping = aes(x = income, y = as.numeric(vote), 
+                              color = factor(year))) +
+          geom_jitter(width = 0.3, height = 0.05, size = 0.1) + 
+          geom_smooth(method = "glm", method.args = list(family = "binomial"),
+                      size = 1.5, se = F) +
+          geom_smooth(method = "glm", method.args = list(family = "binomial"),
+                      size = 0.5 , 
+                      fullrange = T, se = F) +
+          xlim(-1,7) + 
+          labs(x = "income" , y = "Probability of voting Republican", 
+               color = "year") + theme_bw()
+
+plot2 <- ggplot(data = newnes,
+                mapping = aes(x = income, y = as.numeric(vote), 
+                              color = factor(year))) +
+         geom_jitter(width = 0.3, height = 0.05, size = 0.1) +
+         geom_smooth(method = "glm", method.args = list(family = "binomial"),
+                     size = 1, se = T, alpha=0.25) +
+         labs(x = "income" , y = "Probability of voting Republican", 
+              color = "year") + 
+         theme_bw()
+
+plot1 / plot2
+```
+
+```{r compute the fitted probabilities and CI, include=FALSE}
+years <- unique(newnes$year)
+incomes <- sort(unique(newnes$income),decreasing = F)
+fit_CI_income2 <- data.frame(matrix(0,length(years)*length(incomes),ncol = 3))
+for(i in 1:length(years)){
+  glm_fit.2 <- glm(vote ~ income, data = newnes, 
+                 family = binomial(link = logit),
+                 subset = year==years[i])
+  for(j in 1:length(incomes)){
+    glm_pred2 <- predict(glm_fit.2, 
+                         newdata = data.frame(income = incomes[j]),
+                         type = "response", se.fit = T)
+    fit_CI_income2[(5*(i-1)+j),1] <- glm_pred2$fit
+    fit_CI_income2[(5*(i-1)+j),2] <- glm_pred2$fit + glm_pred2$se.fit * qnorm(0.025)
+    fit_CI_income2[(5*(i-1)+j),3] <- glm_pred2$fit + glm_pred2$se.fit * qnorm(0.975)
+    rownames(fit_CI_income2)[5*(i-1)+j] <- paste("yr",years[i],"&inc",incomes[j])
+    }
+}  
+colnames(fit_CI_income2) <- c("fitted","2.5%","97.5%")
+
+fit_CI_income2 <- round(fit_CI_income2,3)
+kable(fit_CI_income2)
+```
+
+Figure 4 (b) shows the fitted probabilities and 95% confidence intervals for different colors in different years. We can see that the lines for recent years(1976-2000) seem to have a larger slope than the lines for the previous years(from 1952 to 1972), indicating that the correlation between income and voting preferences is stronger than past.
+
+11.  Return to the 1992 year data. Filter out rows of `nes1992` with NA's in the variables below and recode as factors using the levels in parentheses:
+    + gender (1 = "male", 2 = "female"), 
+    + race (1 = "white", 2 = "black", 3 = "asian", 4 = "native american", 5 = "hispanic", 7 = "other"), 
+    + education ( use `educ1` with levels 1 = "no high school", 2 = "high school graduate", 3 = "some college", 4 = "college graduate"), 
+    + party identification (`partyid3` with levels 1= "democrats", 2 = "independents", 3 = "republicans", 9 = "apolitical" , and 
+    + political ideology (`ideo` 1 = "liberal", 3 ="moderate", 5 = "conservative") 
+
+
+```{r recode the data}
+newnes_1992 <- nes1992 %>% 
+  filter(!is.na(gender)) %>%
+  filter(!is.na(race)) %>%
+  filter(!is.na(educ1)) %>%
+  filter(!is.na(partyid3)) %>%
+  filter(!is.na(ideo))
+  
+newnes_1992 <- newnes_1992 %>%
+  mutate(gender = recode(gender, '1' = "male", '2' = "female")) %>%
+  mutate(race = recode(race, '1' = "white", '2' ="black", '3' = "asian", 
+                       '4' = "native american", '5' = "hispanic", 
+                       '7' = "other")) %>%
+  mutate(educ1 = recode(educ1, '1' = "no high school", 
+                        '2' = "high school graduate",'3' = "some college",
+                        '4' = "college graduate")) %>%
+  mutate(partyid3 = recode(partyid3, '1' = "democrats", '2' = "independents",
+                           '3' = "republicans", '9' = "apolitical")) %>%
+  mutate(ideo = recode(ideo, '1' = "liberal", '3' = "moderate", 
+                       '5' = "conservative"))
+```
+
+
+
+12.  Fit a logistic regression model predicting support for Bush given the variables above and income as predictors and also consider interactions among the predictors. You do not need to consider all possible interactions nor should you use automatic methods for model selection at this point, but suggest a couple from the predictors above that might make sense intuitively. 
+
+We considered 3 2-way interaction terms for predicting support for Bush. 
+
+The first one is `factor(income)*factor(educ1)`, because we believe that education has effects on income, so these two variables are likely to be correlated. 
+
+The second one is `factor(partyid3)*factor(ideo)`, since we think that party identification and political ideology are all about political preferences, so it is possible for these to be correlated.
+
+The third one is `factor(gender)*factor(race)`, sometimes we hear that the political preferences between white women and black women are quite different, so there may be a correlation between these two variables.
+
+```{r include more interactions in the model}
+glm_fit.4 <- glm(vote ~ factor(income)*factor(educ1) +
+                   factor(partyid3)*factor(ideo) + 
+                   factor(gender)*factor(race), 
+                 data = newnes_1992, 
+                 family = binomial(link = "logit"))
+kable(summary(glm_fit.4)$coef,digits=4, 
+      caption = "Summary for glm(vote ~ factor(income)*factor(educ1)
+      +factor(partyid3)*factor(ideo) +factor(gender)*factor(race))")
+```
+
+```{r analysis of deviance for new model}
+kable(anova(glm_fit.4, test = "Chisq"), caption = "Analysis of deviance for the model", digits = 4)
+```
+
+Since Anova table indicates that 2-way interaction terms of income with educ1, partyid3 with ideo are insignificant, we decide to refit the model excluding those terms.
+
+```{r refit the model}
+glm_fit.5 <- glm(vote ~ factor(income) + factor(educ1) + factor(partyid3) + 
+                   factor(ideo) + factor(gender)*factor(race), 
+                 data = newnes_1992, family = binomial(link = "logit"))
+
+kable(anova(glm_fit.5, test = "Chisq"), caption = "Analysis of deviance for the model",digits=4)
+```
+
+Then we use ANOVA again and found that we need to remove "educ1" as well, because its p-value is too large and  `glm_fit.6` is our final model, which are shown in the chunk below.
+
+```{r choose the model with only significant variables}
+glm_fit.6 <- glm(vote ~ factor(income) + factor(partyid3) + factor(ideo) +
+                   factor(gender)*factor(race), data = newnes_1992, 
+                 family = binomial(link = "logit"))
+
+kable(anova(glm_fit.6, test = "Chisq"), caption = "Analysis of deviance for the model",digits=4)
+```
+
+Now we have model which include only significant variables.
+
+13.  Plot binned residuals using the function `binnedplot` from package `arm` versus some of the additional predictors in the 1992 dataframe.  Are there any suggestions that the mean or distribution of residuals is different across the levels of the other predictors and that these predictors should be added to the model?  (Provide plots and any other summaries to explain). 
+
+Among candidate variables, we test 9 variables, `age`, `urban`, `occup1`, `religion`, `martial-status`, `dlikes`, `presvote`, `presapprove`, and `perfin`
+
+To minimize distortion from removing NA's in each variables, we make datasets which only remove NAs in each variables.
+
+```{r refine dataset}
+newnes_1992_occup <- newnes_1992  %>%
+  filter(!is.na(occup1))
+newnes_1992_religion <- newnes_1992  %>%
+  filter(!is.na(religion))
+newnes_1992_martial <- newnes_1992  %>%
+  filter(!is.na(martial_status))
+newnes_1992_presvote <- newnes_1992  %>%
+  filter(!is.na(presvote_intent))
+newnes_1992_presapprov <- newnes_1992  %>%
+  filter(!is.na(presapprov))
+newnes_1992_perfin <- newnes_1992  %>%
+  filter(!is.na(perfin))
+```
+
+```{r binned plot of additional variables, fig.cap="binned plots for candidate variables. Some variables show trends of increasing or decreasing in average residuals corresponding to levels of predictor variables", fig.width=8, fig.height=10}
+par(mfrow = c(3,3))
+binnedplot(newnes_1992$age,glm_fit.6$residuals, main = "age")
+binnedplot(newnes_1992$urban, glm_fit.6$residuals, main = "urban")
+binnedplot(newnes_1992_occup$occup1, glm_fit.6$residuals, main = "occup1")
+binnedplot(newnes_1992_religion$religion, glm_fit.6$residuals, main = "religion")
+binnedplot(newnes_1992_martial$martial_status, glm_fit.6$residuals, main = "martial")
+binnedplot(newnes_1992$dlikes, glm_fit.6$residuals, main = "dlikes")
+binnedplot(newnes_1992_presvote$presvote_intent, glm_fit.6$residuals, main = "presvote_intent")
+binnedplot(newnes_1992_presapprov$presapprov, glm_fit.6$residuals, main = "presapprove")
+binnedplot(newnes_1992_perfin$perfin, glm_fit.6$residuals, main = "perfin")
+```
+
+From these 9 binnedplots above, we can add `religion`,`perfin` and `presapprov` as our additional predictors because the binnedplots of these three variables show linear relationships between residuals and expected values of these predictors. It means that average residual of our previous model increase or decrease at different level of predictor variable. By adding new variables, we expect improvement in our model. 
+
+```{r assess new model with additional variables}
+newnes_1992_temp <- newnes_1992 %>%
+  filter(!is.na(religion)) %>%
+  filter(!is.na(perfin)) %>%
+  filter(!is.na(presapprov))
+
+glm_fit.8 <- glm(vote ~ factor(income) + factor(partyid3) + factor(ideo) 
+                 +factor(gender)*factor(race) + factor(religion) + factor(perfin) 
+                 +factor(presapprov), data = newnes_1992_temp, family = binomial(link = "logit"))
+kable(anova(glm_fit.8, test = "Chisq"),digits=4,caption="Analysis of deviance for the model")
+```
+
+Then we used ANOVA to check our new model and found these predictors are all signifiant.
+It means that by adding new variables, we significantly improve our model.
+
+14.  Evaluate and compare the different models you fit.  Consider coefficient estimates (are they stable across models) and standard errors (any indications of identifiability problems), residual plots and deviances.
+
+```{r arrange dataset for final model}
+newnes_1992_fin <- newnes_1992 %>%
+  filter(!is.na(religion)) %>%
+  filter(!is.na(perfin)) %>%
+  filter(!is.na(presapprov)) %>% 
+  mutate(income = as.factor(income)) %>%
+  mutate(partyid3 = as.factor(partyid3)) %>%
+  mutate(ideo = as.factor(ideo)) %>%
+  mutate(gender = as.factor(gender)) %>%
+  mutate(race = as.factor(race)) %>%
+  mutate(religion = as.factor(religion)) %>%
+  mutate(perfin = as.factor(perfin)) %>% 
+  mutate(presapprov = as.factor(presapprov))
+```
+
+```{r model fitting}
+glm_fit.6 <- glm(vote ~ income + partyid3 + ideo + gender*race, 
+                 data = newnes_1992_fin, family = binomial(link = "logit"))
+glm_fit.8 <- glm(vote ~ income + partyid3 + ideo + gender*race + religion + perfin + 
+                   presapprov, data = newnes_1992_fin, family = binomial(link = "logit"))
+```
+
+```{r coefficient table for two models, warning=FALSE, message=FALSE}
+old <- glm_fit.6$coefficients
+new <- glm_fit.8$coefficients
+old_ci <- data.frame(cbind(old,confint(glm_fit.6)),model = "old", names = names(old))
+new_ci <- data.frame(cbind(new,confint(glm_fit.8)),model = "new", names = names(new))
+colnames(old_ci) <- c("coefficient","2.5%","97.5%","model","name")
+colnames(new_ci) <- c("coefficient","2.5%","97.5%","model","name")
+kable(old_ci,digits = 4,
+      caption = "coefficient of variables and their confidence interval table for old model")
+kable(new_ci,digits = 4,
+      caption = "coefficient of variables and their confidence interval table for new model")
+```
+
+
+```{r coefficient stability checking, fig.cap="Coefficient comparison plot for each variables. It shows both point and interval estimates for variables.", fig.width=8, fig.height=10}
+coeff_table <- rbind(old_ci,new_ci)
+coeff_table <- na.omit(coeff_table)
+ggplot(data = coeff_table, mapping = aes(x=model, y=as.numeric(coefficient)),
+       labs(x="old & new models",y="coefficients")) +
+  geom_point() +
+  geom_errorbar(aes(ymin = coeff_table[,2],ymax = coeff_table[,3])) +
+  facet_wrap(~name,scales = "free")
+```
+
+As we can see in tables and plots above, some variables' coefficients are showing instability because they have too large standard error compared to its coefficient. For instance, CI for partyid3, race, gender and their interaction terms does not converge and show too large error compared to their estimated values. Some variables even change their sign after new variables are added in model.
+
+```{r indicator of identifiability}
+index_old <- apply(old_ci,1,function(x)sum(is.na(x)))>0
+indicator_old <- rownames(old_ci)[index_old]
+index_new <- apply(new_ci,1,function(x)sum(is.na(x)))>0
+indicator_new <- rownames(new_ci)[index_new]
+indicator <- list(old = indicator_old, new = indicator_new)
+indicator
+```
+
+Above variables are showing the problem of identifiability, because their confidence intervaldoes not converge and are showing NA. We cannot estimate it.
+
+```{r binned residual plot for both model to compare their fit, fig.cap="avergae residual of model versus their fitted value which shows how well model is fitted.",fig.width=8, fig.height=10}
+par(mfrow=c(2,1))
+binnedplot(glm_fit.6$fitted.values,glm_fit.6$residuals, main = "Old Model Binned plot")
+binnedplot(glm_fit.8$fitted.values,glm_fit.8$residuals, main = "New Model Binned plot")
+```
+
+From our above binned plots, we couldn't see any severe violation of our model. So it is a good fit.
+
+```{r Deviance comparison}
+kable(anova(glm_fit.6,glm_fit.8,test = "Chisq"), digit = 4, 
+      caption = "table shows we need to choose new model")
+```
+
+Through Anova table, our new model which added new variables is significantly better than old model. Because we check that it has much smaller deviance by doing chisq test. 
+
+
+15.  Compute the error rate of your model (see GH page 99) and compare it to the error rate of the null model.  We can define a function for the error rate as:
+```{r error.rate}
+error.rate = function(pred, true) {
+  mean((pred > .5 & true == 0) | (pred < .5 & true == 1))
+}
+glm_null <- glm(vote ~ 1, data = newnes_1992_fin, family = binomial(link = "logit"))
+glm_fin <- glm(vote ~ income + partyid3 + ideo + gender*race + religion + perfin + presapprov, data = newnes_1992_fin, family = binomial(link = "logit"))
+null.pred <- predict(glm_null)
+fin.pred <- predict(glm_fin)
+null.error <- error.rate(null.pred, newnes_1992_fin$vote)
+fin.error <- error.rate(fin.pred, newnes_1992_fin$vote)
+error = data.frame(null = null.error,fin = fin.error)
+kable(error,digits = 3, caption = "error rate reduce dramatically when we use fitted value for our model as prediction")
+```
+
+Our model's prediction is much more precise than null model.
+
+16.  Provide one to two paragraphs summarizing your findings.  Provide a neatly formatted table of odds ratios and 95\% confidence intervals for each predictor, and in the text interprete key coefficients (providing ranges of supporting values from above) in terms of the odds of voting for Bush.   Comment on which variables had missing data, suggesting possible reasons why they may be missing and discuss whether you think that this may impact your analysis. Discuss any limitations of the models and its generalizability.  Attempt to write this at a level that readers of the New York Times Upshot column could understand.  
+
+
+Our model evaluated the factors that influnce people voting for Republican in 1992 presidential election. We examined income, political ideology, gender, race, party choice, religion, perfin and presapprov as well as some potential interaction between these variables. We found that political party was significantly associated with a Republican vote:republicans are more likely to vote for Bush than other parties. i.e. odds of voting for Bush is larger than other party. In addition, political ideology was also assiciated with voting. Odds of voting for Bush in Moderated was 1 to 2.4 times larger than odds of voting for Bush in Liberals. When political party affiliation and ideology are held constant, we found religion is another factor to influence people's voting. Odds of voting for Bush in people from Religion2 is 9 times larger than people from Religion3 and 3 three times larger than people from Religion4. Apart from that, we also found black and white male like Bush better than native american and hispanic male.  Also, people with less income but not the least income have the highest possibility to vote for Republican, which is two times more than the richest people. Another thing needs to be mentioned is that there are some variables in our model which cannot be estimated because of the problem called identifiability which occurred from large changing rate and that is one of the limitation of our model. 
+
+Most missing data occured in variables related to political parties and ideology, for example, parents' parties and ideology feel. We also have two columns of NA under the variable regis and icpsr_cty, because people didn't register and didn't agree with enthics were not eligible to vote. As for other variables with missing data, it might because data were collected based on a survey about people's political reference and other personal information. Some people were not sure which ideology or political parties were applied to them and some people didn't know their parents' parties, so they skipped these questions. If these were the cases, these missing data might cause a lower level of political knowledge and biased our analysis. Because when a voter is not sure about his/her political preference, he/she has higher leverege on choosing Republican than other voters.
+This might influence our model's generalizability as well. Therfore, we may want to add a another variable indicating voter's political knowledge or sensitivity. Because this report are prepared for all US citizens and people with less political knowledge just a subset of it, which can't represent all Americans.
+
+
+```{r,message=FALSE, warning=FALSE}
+library(knitr)
+options(digits = 4)
+odds.ratio <- round(exp(glm_fit.8$coefficients),4)
+confit<- round(exp(confint(glm_fit.8)),4)
+df<-data.frame(odds.ratio,confit)
+kable(df,col.names = c("odds ratio", "2.5%", "97.5%"), 
+      caption = "Odds ratio and confidence interval for each predictor")
+```

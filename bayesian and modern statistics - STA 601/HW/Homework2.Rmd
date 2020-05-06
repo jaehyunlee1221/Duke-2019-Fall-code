@@ -1,0 +1,138 @@
+---
+title: 'STA 601/360 Homework2'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+require(magrittr)
+require(plyr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW2 for STA-601
+
+
+## Exercise 1
+sample 100 individual and ask each sample whether they support specific policy. Let $Y_{i} = 1$ if person $i$ in the sample support policy, and $Y_{i} = 0$ otherwise.  
+
+
+#### a) Assume $Y_{i}$ are conditional on $\theta$, i.i.d. binary random variable with expectation $\theta$. Write down the joint distribution $P(Y_{1}=y_{1}, \cdot \cdot \cdot \,Y_{100}=y_{100} \mid \theta)$ and $P(\sum Y_{i} = y\mid \theta)$.
+
+answer: Since $Y_{i}$ are conditional on $\theta$, and i.i.d., it can be written as below:
+
+$$P(Y_{1}=y_{1}, \cdot \cdot \cdot \,Y_{100}=y_{100} \mid \theta) = \prod_{i=1}^{100} P(Y_{i}=y \mid \theta) $$ 
+And, if $S_{n}$ be $P(\sum Y_{i} = y\mid \theta)$ then, it follows $binomial \; distribution$. Thus $S_{n} \sim B(n,\theta)$
+
+$$
+\begin{aligned}
+P(\sum_{i=1}^{n} Y_{i} =y \mid \theta) &= P(S_{n}=y \mid \theta)\\ 
+&= \theta^{S_{n}}(1-\theta)^{n-S_{n}}  \\
+&=\theta^{y}(1-\theta)^{n-y}
+\end{aligned}
+$$
+
+#### b) suppose $\theta \in \{0.1,0.2,\cdot \cdot \cdot,0.9,1.0\}$. Given that $\sum_{i=1}^{100} Y_{i} = 57$, compute $P(\sum Y_{i} = 57\mid \theta)$ for each 11 values of $\theta$ and plot these probabilities as a function of $\theta$
+
+```{r b part}
+library(knitr)
+#computing
+samp <- 100
+n <- 57
+theta <- seq(0,1,0.1)
+prob <- dbinom(n,size=samp,prob=theta)
+#making table
+result <- rbind(theta,prob)
+result <- t(result)
+colnames(result) <- c("theta","probability")
+kable(result)
+#making plot
+ggplot(mapping = aes(x=theta,y=prob)) +
+  geom_point() +
+  geom_line(color="red") +
+  labs(title = "function of theta")
+```
+
+#### c) now suppose no prior information, so assume that $P(\theta = 0.0) = P(\theta = 0.1) = \cdot \cdot \cdot = P(\theta = 1.0)$. Use Bayes' rule to compute $P(\theta \mid \sum_{i}^{n} Y_{i} = 57)$ for each $\theta$-value. Make plot of this posterior distribution as function of $\theta$
+
+Since, $\sum P(\theta) = 1$ and $P(\theta)$ are same for all values of $\theta$. Thus $P(\theta)=1/11$ for prior distribution. 
+$$
+P(\theta \mid \sum_{i=1}^{n} Y_{i} =57) = P(\theta)P( \sum_{i=1}^{n} Y_{i} =57 \mid \theta)/P(\sum_{i=1}^{n} Y_{i} =57)
+$$ 
+and 
+
+$$
+\begin{aligned}
+P(\sum_{i=1}^{n} Y_{i} =57) &= \sum_{\theta=0.0}^{1.0}P(\theta)P( \sum_{i=1}^{n} Y_{i} =57 \mid \theta) \\
+&= \sum_{\theta=0.0}^{1.0} P(\sum_{i=1}^{n} Y_{i} =57 \mid \theta)/11
+\end{aligned}
+$$
+
+```{r c part}
+#computing
+prior <- 1/11
+mgy <- sum(prior*prob)
+posterior <- prior*prob/mgy
+#making table
+result2 <- rbind(theta,posterior)
+result2 <- t(result2)
+kable(result2)
+#making plot
+ggplot(mapping = aes(x=theta,y=posterior)) +
+  geom_point() +
+  geom_line(color="red") +
+  labs(title = "function of theta")
+```
+
+#### d) suppose $\theta$ can have any value in [0,1]. Using uniform prior, that is $P(\theta)$ = 1, plot the posterior density $P(\theta) \times P(\sum_{i=1}^{n} Y_{i} =57 \mid \theta)$ 
+
+
+```{r d part}
+theta2 <- runif(10000,0,1)
+prob2 <- dbinom(57,100,theta2)
+ggplot(mapping = aes(x=theta2,y=prob2)) +
+  geom_point() +
+  labs(title = "function of theta") +
+  xlab(expression(theta)) + ylab("density")
+```
+
+#### e) The posterior distribution of $\theta$ is beta(1+57,1+100-57). Plot the posterior density as a function of $\theta$. Discuss the relationship among all of the plots you have made for this exercise.
+
+```{r e part}
+theta3 <- runif(10000,0,1)
+post_theta <- dbeta(theta3,58,44)
+ggplot(mapping = aes(x=theta3,y=post_theta)) +
+  geom_point() +
+  labs(title = "posterior density function of theta") +
+  xlab("theta") + ylab("probability")
+```
+all plots of (b),(c),(d),(e) have similiar shape. The sampling model's distribution(likelihood function of $\theta$) in (b) has very simliar shape with posterior distribution of $\theta$ in (c). Furthemore, simliar situation occured in (d), (e) where (d) shows likelihood function, (e) shows posterior distribution. They have similar shape. In consequence both cases mean that posterior distribution is dominated by observed sample because of weak prior.  
+
+## Exercice2
+
+#### $\theta_{0} \in \{0.1,0.2 \cdot \cdot \cdot,0.9\}$ and $n_{0} \in \{1,2,8,16,32\}$ find the corresponding a,b values and compute $P(\theta > 0.5 \mid \sum Y_{i} = 57)$ using a beta(a,b) prior for $\theta$. Display the results with a contour plot and discuss how the plot could be used to explain to someone whether or not they should believe that $\theta > 0.5 $ based on the data that $\sum_{i}^{100} Y_{i} = 57$ 
+
+As discussed in book, the posterior distribution of $\theta$ given $\sum_{i=1}^n Y_{i}$ where prior distribution is $beta(a,b)$ is $beta(a+\sum_{i=1}^n Y_{i},b+n-\sum_{i=1}^n Y_{i})$   
+In this case, n=100 and $\sum_{i=1}^n Y_{i}=57$.  
+Thus, posterior distribution of $\theta$ is $beta(a+57,b+43)$
+
+```{r}
+theta_0 <- seq(0.1,0.9,0.1)
+n_0 <- c(1,2,8,16,32)
+a <- theta_0 %*% t(n_0)
+b <- (1-theta_0) %*% t(n_0)
+result3 <- pbeta(0.5,a+57,b+43,lower.tail = F)
+rownames(result3) <- theta_0
+colnames(result3) <- n_0
+result3
+contour(x=theta_0,y=n_0,z=result3,
+        main="contour plot of prior parameters",
+        xlab="prior success proportion",ylab="prior sample size")
+```
+Given observation $\sum_{i=1}^{100} Y_{i} = 57$, We can refer above contour plot to decide whether or not we should believe that $\theta >0.5$. If prior sample size is small, even though prior success proportion is relatively low, we can believe that $\theta >0.5$. It's because prior sample size is so small that they can't have enough information to support $\theta <0.5$. As a evidence, if prior sample size is less than 5, the probability $\theta >0.5$ is nearly 0.9 despite of very low prior success proportion. However,if prior sample size is relavitely large and it shows evidence which refute $\theta >0.5$, the probability of $\theta >0.5$ reduces as we can show above contour plot. Since they show enough evidence of $\theta <0.5$ in advance, although we get new observations support $\theta >0.5$,  we cannot easily conclude that $\theta >0.5$. Thus, contour plot gives us a map how to make our decision with observation according to prior information.

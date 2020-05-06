@@ -1,0 +1,226 @@
+---
+title: "Homework 5"
+author: 'Olivier Binette, Jae Hyun Lee, Vidvat Ramachandran'
+date: "10/17/2019"
+output: 
+  html_document:
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+                      warning = FALSE)
+```
+
+
+# Task 1
+
+We scrape the data from the Wawa store in the following way:
+
+1. we consider all possible store URLs;
+2. we check if they are valid by considering if the status code `HEAD(url)$status_code` corresponds to a 404 error, using the package `httr`;
+3. if they are valid, we then read their content using the function `read_json` from the package `jsonlite` and store in a list.
+
+This is implemented in the script `get_wawa.R`. The data is kept in this raw form, in the file `wawa/wawa.rds`, as to ensure completeness.
+
+For the purpose of Task 3, we also recover geographic information in the script `parse_wawa.R`. We get the state name as well as longitude and latitude coordinates for each of the stores. This is saved as a dataframe in the file `wawa/wawa_geo_df.rds`.
+
+# Task 2
+
+Here we do the following:
+
+1. we recover the list of urls from the base webpage;
+2. for each of the URLs, we extract the body text and parse it as a JSON file, after replacing double square brackets for single square brackets;
+3. this is stored in a list.
+
+This is implemented in the script `get_sheetz.R` and store in `wawa/wawa.rds`.
+
+For Task 3, we recover state names, longitude and latitude coordinates for each of the stores. This is saved as a dataframe in the file `sheetz/sheetz_geo_df.rds`
+
+# Task 3
+
+### Libraries
+
+```{r libraries}
+library(tidyverse)
+library(mapdata)
+library(maps)
+library(alphahull)
+library(mapview)
+```
+
+### Geographic information
+
+Getting location data.
+
+```{r data}
+sheetz_df = readRDS("data/sheetz/sheetz_geo_df.rds")
+wawa_df = readRDS("data/wawa/wawa_geo_df.rds")
+```
+
+We now combine the wawa and sheetz data in a single dataframe, selecting only Pennsylvania stores.
+
+```{r bind together}
+PA_stores = bind_rows(
+  wawa_df %>% mutate(store="Wawa"),
+  sheetz_df %>% mutate(store="Sheetz")
+) %>% filter(state == "PA")
+```
+
+### Plotting the store locations.
+
+We first get the state and county map data.
+
+```{r pennsylvania map data}
+state = map_data("state") %>% subset(region == "pennsylvania")
+counties = map_data("county") %>% subset(region == "pennsylvania")
+```
+
+This provides a base map layer over which we can represent the store locations.
+
+Below we also compute which kind of stores (Wawa or Sheetz) each of the county in Pensylvania contain. This is used to fill the counties with different colors.
+
+```{r basemap}
+counties_list = counties %>% select(subregion) %>% unique()
+
+counties_polygons = lapply(counties_list$subregion, function(county) {
+  mapview::coords2Polygons(as.matrix(counties %>% 
+                   filter(subregion == county) %>% 
+                   select(x=long, y=lat)), ID="test"
+                 )
+})
+
+wawa_pts = sp::SpatialPoints(
+    PA_stores %>% 
+    filter(store=="Wawa") %>% 
+    select(x=longitude, y=latitude)
+  )
+
+sheetz_pts = sp::SpatialPoints(
+    PA_stores %>% 
+    filter(store=="Sheetz") %>% 
+    select(x=longitude, y=latitude)
+  )
+
+contains_wawa = 1*sapply(counties_polygons, function(poly) {
+  sum(!is.na(sp::over(wawa_pts, poly))) > 0
+})
+
+contains_sheetz = 2*sapply(counties_polygons, function(poly) {
+  sum(!is.na(sp::over(sheetz_pts, poly))) > 0
+})
+```
+
+```{r fill}
+fill_df = data.frame(fill=factor(contains_wawa + contains_sheetz), subregion=counties_list)
+counties = left_join(counties, fill_df, by="subregion")
+```
+
+Our ggplot theme.
+
+```{r theme}
+# hw3 - Group Leopard(Vidvat was in it) - creates an empty looking theme
+ditch_the_axes <- theme(
+  axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank()
+  )
+```
+
+Base map layer.
+
+```{r basemap proto}
+basemap = ggplot() + 
+geom_polygon(data=state, mapping=aes(x = long, y = lat, group=group), size=0.5, color = "black", fill="white") + 
+  geom_polygon(data = counties, mapping = aes(x = long, y = lat, 
+                                              group=group, fill=fill), color = "black", size = 0.1) + 
+  scale_fill_manual(values=adjustcolor(c("white", "turquoise","red", "yellow"), alpha.f=0.2), 
+                    labels = c("None", "Wawa", "Sheetz", "Both Sheetz and Wawa"), name = "Counties") +
+  coord_fixed(1.3) +
+  ditch_the_axes
+```
+
+We finally plot the stores over the base map.
+
+```{r map - counties}
+map = basemap + 
+  geom_point(data=PA_stores, 
+             mapping=aes(x = longitude, y = latitude, color=store),
+             alpha=0.9,
+             size=0.7) +
+  labs(title = "Counties in Pennsylvania coloured by store brand", color = "Store" )
+
+map
+```
+
+We observe a dominance of Sheetz stores in the rural areas, whereas Wawa dominates around Philadelphia. The conflicting counties are Lancaster, Berks, Lehigh and Northampton, where both brands have stores.
+
+# Appendix
+
+We had also considered the following visualization.
+
+```{r fortify ashape}
+
+# fortify method for ashape(for plotting in ggplot)
+# https://stackoverflow.com/questions/33304889/filling-alphahull-with-ggplot2, User : hrbrmstr
+fortify.ashape <- function(ashape_res) {
+ xdf <- data.frame(ashape_res$edges)
+ xdf <- do.call(
+   rbind,
+   lapply(1:nrow(xdf), function(i) {
+     rbind(
+       data.frame(x=xdf$x1[i], y=xdf$y1[i]),
+       data.frame(x=xdf$x2[i], y=xdf$y2[i])
+     )
+   })
+ )
+ xdf <- xdf[order(-1 * atan2(
+   xdf$y - mean(range(xdf$y)),
+   xdf$x - mean(range(xdf$x)))), c("x", "y")]
+ xdf <- rbind.data.frame(xdf[nrow(xdf),], xdf[1:(nrow(xdf)-1),])
+ xdf
+}
+
+```
+
+```{r wawa region}
+# creates boundary enclosing wawa stores(like a convex hull)
+wawa_bd <- wawa_df %>%
+  filter(state == "PA") %>%
+  select(longitude, latitude)
+
+names(wawa_bd) <- c("x", "y")
+wawa_bd = ashape(wawa_bd, alpha = 2)
+```
+
+```{r sheetz region}
+# creates boundary enclosing sheetz stores
+sheetz_bd <- sheetz_df %>%
+  filter(state == "PA") %>%
+  select(longitude, latitude)
+
+names(sheetz_bd) <- c("x", "y")
+sheetz_bd = ashape(sheetz_bd, alpha = 2)
+```
+
+```{r region plot}
+# plot regions(filled boundaries) for wawa and sheetz
+ggplot() + 
+geom_polygon(data=state, mapping=aes(x = long, y = lat, group=group), size=0.5,
+             color = "black", fill="white") + 
+  geom_polygon(data = counties, mapping = aes(x = long, y = lat, group=group), color = "black",
+               fill = "white", size = 0.1) + 
+  coord_fixed(1.3) + ditch_the_axes +
+  geom_polygon(data = wawa_bd, aes(x,y), fill = "blue", alpha = 0.2) +
+  geom_polygon(data = sheetz_bd, aes(x,y), fill = "red", alpha = 0.2) +
+  geom_point(data=PA_stores, 
+             mapping=aes(x = longitude, y = latitude, color=store),
+             alpha=0.9, size=0.7) +
+  labs(title = "Regions of Wawa and Sheetz stores in Pennsylvania", color = "Store") +
+  scale_color_manual(values = c("red", "blue"), labels = c("Sheetz", "Wawa"))
+```
+

@@ -1,0 +1,717 @@
+---
+title: 'HW5: Team [5]'
+author: '[Pierre; Lee; Gongjinghao; Chenxi]'
+date: " "
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+
+```{r setup, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
+suppressMessages(library(GGally))
+library(ISLR)
+library(ROCR)
+library(BAS)
+library(knitr)
+library(leaps)
+library(gridExtra)
+library(caret)
+# post on piazza for additional packages if there are wercker build errors due to missing packages
+```
+
+
+We have seen that as the number of features in a model increases, the training error will necessarily decrease, but the test error may not.  
+For this assignment we will explore this using simulation of data to compare methods for estimation and model selection and then a real example.
+
+
+First make sure you have a definition of RMSE
+
+```{r def-rmse}
+rmse = function(obs, pred) { sqrt(sum((obs - pred)^2)/length(obs))}
+```
+
+
+1.  Generate a dataset with $p = 20$ features and $n=1000$ as follows:
+First let's set our random seed in case we need to rerun parts later.
+
+```{r jenny, echo=TRUE}
+# set the random seed so that we can replicate results.
+set.seed(8675309)
+```
+
+In order to simulate data, we need to specify the values of the  "true" parameters.  For this study we will use
+
+```{r true}
+# true parameters
+sigma = 2.5
+betatrue = c(1,2,0,0,0,-1,0,1.5, 0,0,0,1,0,.5,0,0,0,0,-1,1.5,3.5)
+#          int|    X1                            | X2     |X3 
+
+truemodel = betatrue != 0
+```
+
+
+
+Generate Data with correlated columns.
+```{r data, cache=TRUE} 
+
+#sample size
+n = 1000
+
+# generate some standard normals
+  Z = matrix(rnorm(n*10, 0, 1), ncol=10, nrow=n)
+  
+#  Create X1 by taking linear cominations of Z to induce correlation among X1 components
+  
+  X1 = cbind(Z, 
+             (Z[,1:5] %*% c(.3, .5, .7, .9, 1.1) %*% t(rep(1,5)) +
+             matrix(rnorm(n*5, 0, 1), ncol=5, nrow=n))
+             )
+# generate X2 as a standard normal  
+  X2 <- matrix(rnorm(n*4,0,1), ncol=4, nrow=n)
+  
+# Generate X3 as a linear combination of X2 and noise  
+  X3 <- X2[,4]+rnorm(n,0,sd=0.1)
+  
+# combine them  
+  X <- cbind(X1,X2,X3)
+
+# Generate mu     
+# X does not have a column of ones for the intercept so need to add the intercept  
+# for true mu  
+mu = betatrue[1] + X %*% betatrue[-1] 
+  
+# now generate Y  
+Y = mu + rnorm(n,0,sigma)  
+  
+# make a dataframe and save it
+df = data.frame(Y, X, mu)
+```
+
+
+2. Split your data set into a training set containing $200$ observations and a test set containing $700$ observations.  Before splitting reset the random seed based on your team number
+```{r new-seed}
+set.seed(5)   # replace 0 with team number before runing
+train = sample(1:1000, size=300, rep=FALSE)
+df.train <- df[train,]
+df.test <- df[-train,]
+```
+
+3.  Using Ordinary Least squares based on fitting the full model for the training data,  compute the average RMSE for a) estimating $\beta_{true}$, b) estimating $\mu_{true} = X_{\text{test}} \beta_{true}$ and c) out of sample prediction of $Y_{test}$ for the test data.
+Note for a vector of length $d$, RMSE is defined as
+$$
+RMSE(\hat{\theta}) = \sqrt{\sum_{i = 1}^{d} (\hat{\theta}_j - \theta_j)^2/d}
+$$
+Provide Confidence/prediction intervals for $\beta$, and $\mu$, and $Y$ in the test data and report what percent of the intervals contain the true values.  Do any estimates seem surprising?
+```{r coverage function}
+coverage <- function(obs, pred){
+  mean(obs > pred[,1] & obs < pred[,2]) #percent of including obs in predictive interval
+}
+```
+
+
+```{r beta estimation}
+lm.1 <- lm(Y ~ ., data = df.train[,-22]) # Fit full model for the training
+
+kable(cbind(betatrue, confint(lm.1)), caption = "confidence interval for beta") #Confidence interval of beta
+
+beta.rmse <- rmse(betatrue, lm.1$coefficients) #RMSE for estimating true beta
+
+beta.rmse
+
+paste(coverage(betatrue, confint(lm.1)) * 100,"%", sep = "") # percent of the intervals contain the true betas
+```
+
+```{r mu}
+CI <- predict(lm.1, newdata = df.test[,-22], interval = "confidence") #Confidence interval for mu(mean of Y)
+
+mu.pred <- predict(lm.1, newdata = df.test[,-22]) #estimated mu
+
+mu.rmse <- rmse(df.test$mu,mu.pred) #RMSE for mu
+
+mu.rmse
+
+head(CI,10) #sample confidence interval for mu
+
+paste(coverage(df.test$mu, predict(lm.1, newdata = df.test[,-22], interval = "confidence")[,-1]) * 100,"%",sep = "") # percent of the intervals contain the true mu
+```
+
+```{r Y}
+PI <- predict(lm.1, newdata = df.test[,-22], interval = "prediction") #prediction interval for Y
+
+Y.pred <- predict(lm.1, newdata = df.test[,-22]) #predicted Y = estimated mu
+
+pred.rmse <- rmse(df.test$Y, Y.pred) #RMSE for predicting Y
+
+pred.rmse
+
+head(PI,10) #sample prediction interval
+
+paste(coverage(df.test$Y, predict(lm.1, newdata = df.test[,-22], interval = "prediction")[,-1]) * 100, "%", sep = "") #percent of the intervals contain the true Y
+
+mean(c(beta.rmse, mu.rmse, pred.rmse)) #average of RMSE for beta, mu, Y
+```
+
+__There is nothing surprising because all variables are normally distributed and independently sampled. Thus we can expect that OLS performs well because there isn't any assumption violation.__
+
+
+3. Perform best subset selection on the training data  and plot the training set RMSE for fitting associated with the best model ($R^2$) of each size.  See Section 6.5.1 in ISLR.
+
+```{r}
+lm.2 <- regsubsets(Y ~ . , data = df.train[,-22], nvmax = 20) #variable selection procedure
+
+summary.model <- summary(lm.2)
+
+X.train <- model.matrix(lm.1) #predictor matrix for full model
+
+RMSE <- rep(NA,20)
+R <- rep(NA,20)
+
+for(i in 1:20){
+  best.model <- summary.model$which[i,] #best model among models that used i variable
+  
+  X.best <- X.train[,best.model] #predictor matrix of chosen variables
+  
+  lm.best <- lm(df.train$Y ~ X.best -1) #new model using only chosen variables
+  
+  RMSE[i] <- rmse(df.train$Y, lm.best$fitted.values) #RMSE of training model for Y
+  
+  R[i] <- summary(lm.best)$r.squared #R-squared of training model
+}
+
+result <- cbind.data.frame(stat = c(rep("RMSE",20),rep("R-squared",20)), value = c(RMSE,R))
+
+ggplot(data = result, mapping = aes(x = rep(1:20,2), y = value, color = stat)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~stat, scales = "free") +
+  labs(title = "size of variable vs RMSE of best model", x = "size", y = "RMSE")
+```
+
+
+4. Plot the test set RMSE for prediction associated with the best model of each size.   For which model size does the test set RMSE take on its minimum value?  Comment on your results.  If it takes on its minimum value for a model with only an intercept or a model containing all of the predictors, adjust $\sigma$ used in generating the data until the test set RMSE is minimized for an intermediate point.
+
+```{r Q4}
+X.train <- model.matrix(lm.1) #predictor matrix of full model
+
+X.test <- model.matrix(lm.1, data = df.test[,-22]) #predictor matrix for test set
+
+RMSE <- rep(NA,20)
+
+for(i in 1:20){
+  best.model <- summary.model$which[i,] #best model among models that used i variable
+  
+  X.best.train <- X.train[,best.model] #training predictor matrix of chosen variables
+  
+  X.best.test <- X.test[,best.model] #test predictor matrix of chosen variables
+  
+  lm.best <- lm(df.train$Y ~ X.best.train -1) #new model only using chosen model
+  
+  Y.pred <- X.best.test %*% lm.best$coefficients #out of sample prediction for Y
+  
+  RMSE[i] <- rmse(df.test$Y, Y.pred) #RMSE for out of sample prediction
+}
+
+ggplot(mapping = aes(x = 1:20, y = RMSE)) +
+  geom_point() +
+  geom_line(color = "red") +
+  geom_vline(xintercept = which.min(RMSE))+
+  labs(title = "size of variable vs RMSE of best model", x = "size", y = "RMSE")
+```
+
+__RMSE for test set has minimum value at model whose size is 7. At first, RMSE decreases dratically until its model size reaches 7. After size 7, RMSE increases gradually.__
+
+5.  How does the model at which the test set RMSE is minimized compare to the true model used to generate the data?  Comment on the coefficient values and confidence intervals obtained from using all of the data.  Do the intervals include the true values?
+
+
+```{r}
+best <- summary.model$which[which.min(RMSE),] #best model that has smallest RMSE for test set
+
+colnames(model.matrix(lm.1))[best]
+colnames(model.matrix(lm.1))[truemodel]
+
+kable(cbind.data.frame(truemodel,best), caption = "Comparison between true and best model") #comparison between true model and our best model
+
+lm.3 <- lm(Y~., data = df[,-22]) #need to modify
+
+names(truemodel) <- colnames(model.matrix(lm.1))
+
+kable(cbind(betatrue,lm.3$coefficients,confint(lm.3)), caption = "Coefficient values and CI from using all of the data", digits = 3) #coefficient and confidence intervals from above model
+```
+
+__When we see above table comparing true model and out best model, we can find that they are exactly same except for V19. In model that used all of data, we can find that true values of beta are all captured by confidence interval of model.__
+
+6.  Use AIC with stepwise or all possible subsets  to select a model based on the training data and then use OLS to estimate the parameters under that model.  Using the estimates to compute the RMSE for a) estimating $\beta^{true}$, b) estimating $\mu_{true}$ in the test data, and c) predicting $Y_{test}$. For prediction, does this find the best model in terms of RMSE? Does AIC find the true model?  Comment on your findings.
+
+```{r}
+lm.4 <- lm(Y ~. ,data = df.train[,-22]) #full model of training set
+
+best.aic <- step(lm.4, trace = F, k = 2) #model selection based on AIC, k = 2
+
+index <- colnames(model.matrix(lm.4)) %in% colnames(model.matrix(best.aic)) #selected variables indexing
+
+kable(cbind(betatrue[index], confint(best.aic)), caption = "confidence interval for beta", digits = 3) #true beta and model's estimated confidence interval for beta
+
+beta.rmse <- rmse(betatrue[index], best.aic$coefficients) #RMSE for estimating beta
+mu.pred <- predict(best.aic, newdata = df.test[,-22]) 
+mu.rmse <- rmse(df.test$mu,mu.pred) #RMSE for estimating mu
+Y.rmse <- rmse(df.test$Y, predict(best.aic, newdata = df.test[,-22])) #RMSE for predicting Y
+
+d <- data.frame(beta.rmse=beta.rmse,mu.rmse=mu.rmse,Y.rmse=Y.rmse)
+kable(d, digits=3)
+
+kable(cbind(truemodel,index), caption = "true vs best AIC", digits = 3)
+```
+
+__Above Stepwise procedure based on AIC fails to find the best model in terms of RMSE because it includes one more variable V9 than model that had the smallest RMSE at previous question. However, model selection based on AIC does not guarantee that chosen model is true model because it finds the best model that has the most accurate prediction. As a result, they are exactly same except for V11, V19 and it also fails to find true model. Not only it fails to find true model, best.aic fails to capture true X3 coefficient in its confidence interval as we can see at the table of true beta and estimated beta under best.aic.__
+
+7.   Use BIC with either stepwise or all possible subsets to select a model and then use OLS to estimate the parameters under that model.  Use the estimates to compute the RMSE for a) estimating $\beta^{true}$, b) $\mu_{true}$ for the test data, and c) predicting $Y_{test}$.   For prediction, does this find the best model in terms of RMSE? Does BIC find the true model?  Comment on your findings.
+
+```{r}
+best.bic <- step(lm.4, trace = F, k = log(nrow(df.train[,-22]))) #model selection based on BIC, k = log(n)
+
+index <- colnames(model.matrix(lm.4)) %in% colnames(model.matrix(best.bic)) #indexing chosen variable
+
+kable(cbind(betatrue[index], confint(best.bic)), caption = "confidence interval for beta") #true beta and estimated beta's confidence interval
+
+beta.rmse <- rmse(betatrue[index], best.bic$coefficients) #RMSE for estimating beta
+mu.pred <- predict(best.bic, newdata = df.test[,-22]) 
+mu.rmse <- rmse(df.test$mu,mu.pred) #RMSE for estimating mu
+Y.rmse <- rmse(df.test$Y, predict(best.bic, newdata = df.test[,-22])) #RMSE for predicting Y
+
+d <- data.frame(beta.rmse=beta.rmse,mu.rmse=mu.rmse,Y.rmse=Y.rmse)
+kable(d, digits=3)
+
+bic.best <- index
+
+kable(cbind(truemodel,bic.best), caption = "true vs best BIC")
+```
+
+__Above Stepwise procedure based on BIC succeed to find the best model in terms of RMSE because it finds same model that had the smallest RMSE at Q5. Actually, model selection based on BIC performs to find true model and it selects model according to probability to be true model. However, in this case, it returns same result with AIC and above best model and it consequently fails to find true model.__
+
+8.  Take a look at the summaries from the estimates under the best AIC and BIC models fit to the training data. Create confidence intervals for the $\beta$'s and comment on whether they include zero or not or the true value.  (Provide a graph) 
+
+```{r}
+summary(best.aic)
+summary(best.bic)
+
+include <- function(data, bound){
+  as.logical(data > bound[,1] & data < bound[,2]) #check interval include observed value.
+}
+index1 <- colnames(model.matrix(lm.4)) %in% colnames(model.matrix(best.aic))
+index2 <- colnames(model.matrix(lm.4)) %in% colnames(model.matrix(best.bic))
+
+result1 <- cbind.data.frame(betatrue[index1],confint(best.aic), include(0,confint(best.aic)),
+                           include(betatrue[index1],confint(best.aic)))
+result2 <- cbind.data.frame(betatrue[index2],confint(best.bic), include(0,confint(best.bic)),
+                           include(betatrue[index2],confint(best.bic)))
+
+
+names(result1) <- c("true beta","2.5%","97.5%","0 include","true include")
+names(result2) <- c("true beta","2.5%","97.5%","0 include","true include")
+
+kable(result1, caption = "Best aic model summary", digits = 3)
+kable(result2, caption = "Best bic model summary", digits = 3)
+
+p1 <- ggplot(data = result1, mapping = aes(x = rownames(result1))) +
+  geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.2) +
+  geom_point(aes(y = `true beta`), color = "red") +
+  geom_hline(yintercept = 0, color = "orange") +
+  coord_flip() +
+  labs(title = "confidence interval and true beta for each variables for best.aic", 
+       x = "variables", y = "Interval")
+
+p2 <- ggplot(data = result2, mapping = aes(x = rownames(result2))) +
+  geom_errorbar(aes(ymin = `2.5%`, ymax = `97.5%`), width = 0.2) +
+  geom_point(aes(y = `true beta`), color = "red") +
+  geom_hline(yintercept = 0, color = "orange") +
+  coord_flip() +
+  labs(title = "confidence interval and true beta for each variables for best.bic", 
+       x = "variables", y = "Interval")
+
+grid.arrange(p1,p2)
+```
+
+__As we can see, selected model based on AIC, BIC are same except for V9. True value of V9 is 0 and confidence interval of best.aic model also capture that fact but it decided to include V9 for better prediction. On the other hand, all variable's except for V9 confidence intervals does not include 0 and except for X3, we can find that all confidence intervals of betas include true beta values.__
+
+10. Provide a paragraph summarizing your findings and any recommendations for model selection and inference for the tasks of prediction of future data, estimation of parameters or selecting the true model.
+
+__In this analysis, model selection methods based on AIC is slightly different from selection based on BIC. The best model based on AIC includes intercept, V1, V5, V7, V9, V11, V13, V18 and X3. On contrary, The best model based on BIC includes intercept, V1, V5, V7, V11, V13, V18 and X3. In terms of coefficients, the best model based on BIC is closer to the true beta than best model of AIC. For prediction, model based on BIC shows lower test RMSE. Thus in this situation, we can say that the best model based on BIC is better than that based on AIC. But in general, model selection methods are chosen by their own purpose, i.e. finding true model or achieving accurate prediction, we should select appropriate methods depending on situation. If the purpose is to find the true model, we suggest to use BIC which has higher penalty on the number of parameters, in this way the parameters in the best model we get will be more likely to be in the true model. On the other hand, if the purpose is prediction, then we may try different model selection methods and compare their test rmse and coverage. We finalize our model based on the results of comparasion among candidate models from different selection methods.__
+
+11. This problem uses the `Caravan` data from the package `ISLR`. To start reset your random seed based on your group number. 
+```{r}
+data(Caravan, package="ISLR")
+set.seed(2)  #update
+test= 1:1000
+train = -test
+caravan.train = Caravan[train,]
+caravan.test = Caravan[test,]
+```
+Here we use indexes to split the data to make sure our model is consistant accross group members.
+
+      a)  Fit a logistic regression model to the training data with all predictors to predict if an individual will purchase insurance and provide a table of estimates with confidence intervals and any relevant summaries of the model.  Comment on your findings - are there any concerns?
+      
+```{r}
+caravan.logit <- glm(Purchase ~ ., data= caravan.train, family = binomial)
+caravan.logit.coef <- summary(caravan.logit)$coef[,1]
+caravan.logit.pval <- summary(caravan.logit)$coef[,4]
+confint.caravan <- confint.default(caravan.logit)
+table.11a <- cbind(caravan.logit.coef, confint.caravan, caravan.logit.pval) 
+colnames(table.11a) <- c("Estimate", "2.5 %", "97.5 %", "p values") 
+table.11a %>%
+  kable(digits=c(4,4,4,4))
+summary(caravan.logit)$null.deviance
+summary(caravan.logit)$deviance
+```
+     APLEZIER, ALEVEN, PBRAND, PLEVEN, PPERSAUT, MGEMLEEF seems to be the only significant predictors in this model (p values<.05). We can see that an important number of variables include 0 in their confidence interval such as the intercept. We see that the deviance of the model is 1851.77 while the null deviance is 2187.11. We can see that despite the larger number of predictors, the difference between the null and full model is quite small. We may want to look for another model.
+    
+    b)  Using AIC as a criterion,  find the best subset of predictors using the training data.   _Note:  do not show all ouput from step, but just the final model!_
+     
+```{r message=FALSE, warning=FALSE, cache=T}
+best.step.logit = step(caravan.logit, k=2, trace = F)
+best.step.logit$formula
+best.step.logit$coefficients
+```
+     
+     c) Create  a table of estimates with confidence intervals any relevant summaries of the final model. Comment on the findings - which predictors are most important? 
+     
+```{r, cache=T}
+confint_best_logit <- confint.default(best.step.logit)
+coeff_best_logit <- summary(best.step.logit)$coefficients[,1]
+pval_best.AIC <- summary(best.step.logit)$coefficients[,4]
+table_11c <- cbind(coeff_best_logit, confint_best_logit, pval_best.AIC)
+colnames(table_11c) <- c("Estimate", "2.5%", "97.5%", "p values")
+table_11c %>%
+  kable(digits = c(4,4,4,4))
+best.step.logit$aic
+best.step.logit$null.deviance
+best.step.logit$deviance
+```
+Our best model based on BIC is made of 20 predictors plus the intercept. Variables PPERSAUT, MOPLLAAG and PBRAND are the most important as their p values is significant at the .001 level and their confidence interval does not include 0. The null deviance is 2187.11 and the deviance for this model was 1890.21.  
+
+      d)  Use BIC to find the best subset of predictors using the training data.    If you start BIC at the best AIC model found using step will this result in the same model as if you started at the full model?  _Note:  do not show all ouput from step!_ 
+
+```{r warning=FALSE}
+best.logit.BIC = step(caravan.logit, k=log(n), trace = F)
+best.logit.BIC$formula
+#Starting from AIC model
+best.logit.BIC2 = step(best.step.logit, k=log(n), trace = F)
+best.logit.BIC2$formula
+```
+We can see that using BIC with the full model or the AIC model return the same final model 
+       
+     e) Create  a table of estimates with confidence intervals any relevant summaries of the final model. Which predictors are most important?  Are all of the variables included here also included in the best AIC model?   Are there any that include zero in the credible (confidence) interval? 
+     
+```{r}
+confint_best_logit_BIC <- confint.default(best.logit.BIC)
+coeff_best_logit_BIC <- summary(best.logit.BIC)$coefficients [,1]
+pval_best_logit_BIC <- summary(best.logit.BIC)$coefficients [,4]
+table_11e <- cbind(coeff_best_logit_BIC, confint_best_logit_BIC, pval_best_logit_BIC)
+colnames(table_11e) <- c("Estimates", "2.5%", "97.5%", "p values")
+table_11e %>%
+  kable(digits = c(4,4,4,4))
+best.logit.BIC$aic
+best.logit.BIC$null.deviance
+best.logit.BIC$deviance
+```
+We have 7 variables (MRELGE, MOPLLAAG, PPERSAUT, PBRAND, PFIETS, AWALAND, APLEZIER) plus the intercept in this model. Every predictor is significant at at least the .o1 level. Every variables included here is also included in the AIC model. None of them actually include 0 in their 95% confidence interval.  MOPLLAAG, PPERSAUT, PBRAND, APLEZIER are the most important variables to predict insurance purchase as their p values are the smallest (<.00001) and their confindence interval does not include zero.
+       
+      f)  For each method, create a  confusion matrix for the classifications on the observed data,  a table where the diagonal elements show how many times the model predicts correctly and the off-diagonal elements indicate miss-classification. Report the missclasification rate for each model.  For creating the predictions, use a cut-off of 0.25.
+     
+```{r}
+pred.logit.AIC.train <- predict(best.step.logit, type = 'response')
+pred.logit.BIC.train <- predict(best.logit.BIC, type = 'response')
+# set threshold/cut-off at 0.5 and create a confusion matrix
+# your misclassification rate depends on the cut-off
+cutoff = 0.25
+## confusion matrix for AIC
+glm.predAIC.train <- rep("Down", nrow(caravan.train))
+glm.predAIC.train[pred.logit.AIC.train > cutoff] <- "Up"
+glm.predAIC.train <- factor(glm.predAIC.train, levels = c('Down', 'Up'))
+confMatAIC.train <- table(glm.predAIC.train, caravan.train$Purchase)
+names(attributes(confMatAIC.train)$dimnames) <- c("Prediction","Truth")
+confMatAIC.train
+tpAIC.train = confMatAIC.train[2,2]
+tnAIC.train = confMatAIC.train[1,1]
+fpAIC.train = confMatAIC.train[2,1]
+fnAIC.train = confMatAIC.train[1,2]
+# misclassification rate
+(fpAIC.train+fnAIC.train)/nrow(caravan.train)
+## confusion matrix for BIC
+glm.predBIC.train <- rep("Down", nrow(caravan.train))
+glm.predBIC.train[pred.logit.BIC.train > cutoff] <- "Up"
+glm.predBIC.train <- factor(glm.predBIC.train, levels = c('Down', 'Up'))
+confMatBIC.train <- table(glm.predBIC.train, caravan.train$Purchase)
+names(attributes(confMatBIC.train)$dimnames) <- c("Prediction","Truth")
+confMatBIC.train
+tpBIC.train = confMatBIC.train[2,2]
+tnBIC.train = confMatBIC.train[1,1]
+fpBIC.train = confMatBIC.train[2,1]
+fnBIC.train = confMatBIC.train[1,2]
+# misclassification rate
+(fpBIC.train+fnBIC.train)/nrow(caravan.train)
+```
+The misclassificaton rate for the AIC model is 6.78% while it is 6.47% for the BIC model 
+
+    g)  Create confusion matrices using the test data.   Which model has the lowest missclassification rate out of sample?  
+    
+```{r}
+pred.logit.AIC.test <- predict(best.step.logit, newdata = caravan.test, 
+                               type = 'response')
+pred.logit.BIC.test <- predict(best.logit.BIC, newdata = caravan.test, 
+                               type = 'response')
+# set threshold/cut-off at 0.25 and create a confusion matrix
+cutoff = 0.25
+## confusion matrix for AIC
+glm.predAIC.test <- rep("Down", nrow(caravan.test))
+glm.predAIC.test[pred.logit.AIC.test > cutoff] <- "Up"
+glm.predAIC.test <- factor(glm.predAIC.test, levels = c('Down', 'Up'))
+confMatAIC.test <- table(glm.predAIC.test, caravan.test$Purchase)
+names(attributes(confMatAIC.test)$dimnames) <- c("Prediction","Truth")
+confMatAIC.test
+tpAIC.test = confMatAIC.test[2,2]
+tnAIC.test = confMatAIC.test[1,1]
+fpAIC.test = confMatAIC.test[2,1]
+fnAIC.test = confMatAIC.test[1,2]
+# misclassification rate
+(fpAIC.test+fnAIC.test)/nrow(caravan.test)
+## confusion matrix for BIC
+glm.predBIC.test <- rep("Down", nrow(caravan.test))
+glm.predBIC.test[pred.logit.BIC.test > cutoff] <- "Up"
+glm.predBIC.test <- factor(glm.predBIC.test, levels = c('Down', 'Up'))
+confMatBIC.test <- table(glm.predBIC.test, caravan.test$Purchase)
+names(attributes(confMatBIC.test)$dimnames) <- c("Prediction","Truth")
+confMatBIC.test
+tpBIC.test = confMatBIC.test[2,2]
+tnBIC.test = confMatBIC.test[1,1]
+fpBIC.test = confMatBIC.test[2,1]
+fnBIC.test = confMatBIC.test[1,2]
+# misclassification rate
+(fpBIC.test+fnBIC.test)/nrow(caravan.test)
+```
+The BIC model has the lowest misclassification rate out-of-sample.
+    
+    i)  For each method, create an ROC curve  and estimate of AUC (see lab) using the training and test data.  Which method has the best AUC?  Does the method with the best AUC in the training data have the best AUC in the test data?   
+    
+```{r}
+## AIC for train data
+pred.roc.AIC.train <- ROCR::prediction(predictions = pred.logit.AIC.train, 
+                             labels = caravan.train$Purchase, 
+                             label.ordering = NULL)
+perf.roc.AIC.train <- ROCR::performance(pred = pred.roc.AIC.train,
+  measure = "tpr",
+  x.measure = "fpr")
+ROCR::plot(perf.roc.AIC.train, colorize = T, main="ROC Curve AIC Model, in-Sample")
+abline(a=0, b= 1, lty= 2)
+auc.perf.AIC.train = ROCR::performance(pred.roc.AIC.train, measure = "auc")
+auc.perf.AIC.train@y.values
+## BIC for train data
+pred.roc.BIC.train <- ROCR::prediction(predictions = pred.logit.BIC.train, 
+                             labels = caravan.train$Purchase, 
+                             label.ordering = NULL)
+perf.roc.BIC.train <- ROCR::performance(pred = pred.roc.BIC.train,
+  measure = "tpr",
+  x.measure = "fpr")
+ROCR::plot(perf.roc.BIC.train, colorize = T , main="ROC Curve BIC Model, in-Sample")
+abline(a=0, b= 1, lty= 2)
+auc.perf.BIC.train = ROCR::performance(pred.roc.BIC.train, measure = "auc")
+auc.perf.BIC.train@y.values
+```
+
+
+```{r}
+## AIC for test data 
+pred.roc.AIC.test <- ROCR::prediction(predictions = pred.logit.AIC.test, 
+                             labels = caravan.test$Purchase, 
+                             label.ordering = NULL)
+perf.roc.AIC.test <- ROCR::performance(pred = pred.roc.AIC.test,
+  measure = "tpr",
+  x.measure = "fpr")
+ROCR::plot(perf.roc.AIC.test, colorize = T , main="ROC Curve AIC Model, Out-of-Sample")
+abline(a=0, b= 1, lty= 2)
+auc.perf.AIC.test = ROCR::performance(pred.roc.AIC.test, measure = "auc")
+auc.perf.AIC.test@y.values
+## BIC for test data
+pred.roc.BIC.test <- ROCR::prediction(predictions = pred.logit.BIC.test, 
+                             labels = caravan.test$Purchase, 
+                             label.ordering = NULL)
+perf.roc.BIC.test <- ROCR::performance(pred = pred.roc.BIC.test,
+  measure = "tpr",
+  x.measure = "fpr")
+ROCR::plot(perf.roc.BIC.test, colorize = T, main="ROC Curve BIC Model, Out-of-Sample")
+abline(a=0, b= 1, lty= 2)
+auc.perf.BIC.test = ROCR::performance(pred.roc.BIC.test, measure = "auc")
+auc.perf.BIC.test@y.values
+```
+The AIC model has the best in-sample and out-of-sample AUC here even though both model are quite close (.777 VS 0.756--0.743 VS .738).
+
+    j) The company may be more interested in identifying individuals who will buy insurance.  The sensitivity of the method is based on the number of true positives (i.e. those that we correctly classified as purchasing insurance) divided by the total number of positives that we predicted  (true positives + false negatives).  For each method calculate the sensitivity.  Which would you recommend.
+  
+```{r}
+# true postive rate AIC Train data
+sensAIC.train <- tpAIC.train/(tpAIC.train+fnAIC.train)
+# true postive rate BIC Train data
+sensBIC.train <- tpBIC.train/(tpBIC.train+fnBIC.train)
+# true postive rate AIC Test data
+sensAIC.test <- tpAIC.test/(tpAIC.test+fnAIC.test)
+# true postive rate BIC Test data
+sensBIC.test <- tpBIC.test/(tpBIC.test+fnBIC.test)
+table_11j <- cbind(sensAIC.train, sensBIC.train, sensAIC.test, sensBIC.test)
+colnames(table_11j) <- c("Train (AIC)", "Train (BIC)", "Test (AIC)", "Test (BIC)" )
+table_11j%>%
+  kable(digits = c(4,4,4,4))
+```
+We see that AIC has the highest sensitivity both in and out-of-sample. Using sensitivity, we would recomend using the AIC model.
+    
+    k)  Provide a half-page (max) report  briefly describing what you did and your findings for the model that you think is best.  For the five most important variables in your final model report interval estimates of the odds ratios and interpretations in the context of the problem.
+    
+We used the Caravan dataset to predict if an individual will purchase caravan insurance. After investigating different models, we chose the best AIC model as our best model to predict insurance purchased. We identified PPERSAUT, MOPLLAAG and PBRAND as being the most important variables in our model while MGEMLEEF and PFIETS were also assessed to be quite important  
+
+We first splitted the dataset into a training and a test dataset using indexes to make sure we had the same subsets. We fitted a logistic model including every predictors available. We ruled this model to be inefficient as a large number of predictors did not seem to help us predict insurance purchase. We then decided to use best selection methods with AIC and BIC to improve our model. After obtaining each model, we found confidence intervals for our predictors and identified the most important variables in each model using the mot significant p values a well as the confidence iterval for the coefficients (inclusion of 0 or not). We pursued by comparing the best AIC and BIC models. 
+
+While our AIC model included 20 variables, the best BIC model included 8 variables all were included in the AIC model. We built confusion matrices to compare these two models using misclassification rate, AUC (with ROC curves) and sensitivity. While the BIC model had a sligthly lower misclassification rate (AIC = 6.78% VS BIC = 6.47%), the AIC model had a larger sensitivity (13.84% VS 6.24%) and a sigthly better AUC (.777 VS .756) for the training dataset and these followed the same trends in the test data. 
+
+Since The company is probably more interested in identifying individuals who will buy insurance, we decided to emphasize sensitivity when selecting our model. Therefore, this is why we picked the AIC model over the BIC one. The AIC model had a deviance of 1890.205 for a null deviance of 2187.113 and a reduction of 66 predictors (residual degrees of freedom).
+
+```{r}
+PBRAND <- data.frame(lwr = exp(0.1601),
+        upr= exp(0.4670))
+PFIETS <- data.frame(lwr = exp(0.2405),
+        upr= exp(1.4500))
+MGEMLEEF <- data.frame(lwr = exp(0.0705),
+        upr= exp(0.4105))
+MOPLLAAG <- data.frame(lwr = exp(-0.2086),
+        upr= exp(-0.0570))
+PPERSAUT <- data.frame(lwr = exp(0.1916),
+        upr= exp(0.2959))
+impvar_odds <- rbind (PBRAND, PFIETS , MGEMLEEF, MOPLLAAG , PPERSAUT)
+rownames(impvar_odds) <- c('PBRAND', 'PFIETS' , 'MGEMLEEF', 'MOPLLAAG' , 'PPERSAUT')
+impvar_odds %>%
+  kable(digits = c(3,3))
+```
+
+Everything else equal, for a one unit increae in PBRAND, we would expect the odds of buying a caravan insurance to increase between 1.174 and 1.595
+Everything else equal, for a one unit increae in PFIETS, we would expect the odds of buying a caravan insurance to increase between 1.272 and 4.263
+Everything else equal, for a one unit increae in MGEMLEEF, we would expect the odds of buying a caravan insurance to increase between 1.073 and 1.508
+Everything else equal, for a one unit increae in MOPLLAAG, we would expect the odds of buying a caravan insurance to decrease and be between 0.812 and 0.945
+Everything else equal, for a one unit increae in PPERSAUT, we would expect the odds of buying a caravan insurance to increase between 1.211 and 1.344
+
+
+
+
+## Theory 
+
+12.  Using the expression for the likelihood for $\beta$ and $\phi$ from lecture on 10/16/2019 and the independent Jeffreys prior $p(\beta, \phi) \propto 1/\phi$ derive the posterior distribution for $\beta \mid Y, \phi$ and $\phi \mid \Y$.   (Check that your answer agrees with results in class)
+
+$$
+p(\beta, \phi \mid Y) \propto p(\beta, \phi) \: p(Y \mid \beta, \phi)\\
+\propto \phi^{-1}\times (2\pi)^{-n/2}\phi^{\frac{n}{2}}\exp{(-\frac{\phi}{2}(Y-X\beta)^{T}(Y-X\beta))\\
+\propto \phi^{\frac{n}{2}-1}\exp{(-\frac{\phi}{2}(Y-\hat{Y}+\hat{Y}-X\beta)^{T}(Y-\hat{Y}+\hat{Y}-X\beta))}\\
+\propto \phi^{\frac{n}{2}-1}\exp{(-\frac{\phi}{2}(Y-\hat{Y})^{T}(Y-\hat{Y}))} \exp({-\frac{\phi}{2}\hat{Y}-X\beta)^T(\hat{Y}-X\beta))}\\
+\propto \phi^{\frac{n}{2}-1}\exp{(-\frac{\phi}{2}(Y-\hat{Y})^{T}(Y-\hat{Y}))} \exp{(-\frac{\phi}{2}}(X\hat{\beta}-X\beta)^{T}(X\hat{\beta}-X\beta))}\\
+\propto \phi^{\frac{n}{2}-1}\exp{(-\frac{\phi}{2}SSE)}\exp{(-\frac{\phi}{2}(\beta-\hat{\beta})^T(X^{T}X)(\beta-\hat{\beta}))}\\
+\propto \phi^{\frac{n-p}{2}-1}\exp{(-\frac{\phi}{2}SSE)}\phi^{\frac{p}{2}}\exp{(-\frac{\phi}{2}(\beta-\hat{\beta})^T(X^{T}X)(\beta-\hat{\beta}))}
+$$
+We see here that that the first exponent expression is proprotional to a gamma distribution while the second is proportional to a normal distribution. We could write it as:
+$$
+\propto p(\phi \mid Y)p(\beta \mid \phi, Y)
+$$
+Where:
+$$
+p(\beta \mid \phi, Y) \propto \phi^{p/2}\exp{(-\frac{\phi}{2}(\beta-\hat{\beta})^T(X^{T}X)(\beta-\hat{\beta}))}\\
+$$
+We see that this is proportional to a Normal distribution in matrix form ($\hat{\beta}$, $(X^{T}X)^{-1}\phi^{-1}$) 
+ and 
+$$
+p(\phi\mid Y)\propto\phi^{\frac{n-p}{2}-1}\exp{(-\frac{\phi}{2}SSE)}
+$$
+Which is proportional to a gamma distibution in matrix form ($\frac{n-p}{2}$,$\frac{SSE}{2}$)
+where SSE = $(Y-\hat{Y})^{T}(Y-\hat{Y})$
+
+
+
+
+## Using BAS for Subset Selection  (optional)
+
+Notes:  in addition to the packages discussed in ISLR, we can enumerate all possible models or sample models using the package `BAS`.  The resulting objects will be large under enumeration with $p=10$ as there are over 1 million models.
+
+For linear models we can enumerate all models using AIC based on the following code:
+
+```{r bas.aic, eval=FALSE}
+sim.aic = bas.lm(Y ~ . -mu, data=df[train,], method="deterministic",
+                 n.models=2^20, prior="AIC")
+```
+
+Get predictions with the best AIC model  "Highest Posterior Probabilty model = 'HPM' and extract the variables.
+
+```{r,  eval=FALSE}
+pred = predict(sim.aic, newdata = df[-train,], estimator='HPM')
+variable.names(pred)
+```
+
+Find the RMSE
+```{r rmse-bas,  eval=FALSE}
+rmse(df[-train, "Y"], pred$fit)
+```
+
+For BIC, change the prior to 'BIC"; see `help(bas.lm)` for other priors if you want to explore more options.
+
+Now try the above using MCMC,
+
+
+```{r bas.aic.mcmc,  eval=FALSE}
+sim.aic.mcmc = bas.lm(Y ~ . -mu, data=df[train,], method="MCMC",
+                 MCMC.iterations=50000, prior="AIC")
+sim.aic.mcmc$n.Unique
+```
+`n.Unique` is the number of unique models that were sampled using MCMC
+
+```{r, eval=FALSE}
+diagnostics(sim.aic.mcmc,  eval=FALSE)  # Is there a strong 1:1 relationship suggesting convergence?
+```
+
+
+```{r,  eval=FALSE}
+pred = predict(sim.aic.mcmc, newdata = df[-train,], estimator='HPM')
+variable.names(pred)
+rmse(df[-train, "Y"], pred$fit)
+```
+
+Did you find the same model?
+
+
+
+For glms the syntax is lightly different for specifying which prior to use.
+
+```{r, eval=FALSE}
+set.seed(0)
+test = 1:1000  # as in ISLR Chapter 4
+train = -test
+#start with model formula from AIC stepwise  `step.car`
+car.bas = bas.glm(Purchase ~ ., betaprior=aic.prior(), 
+                  data=Caravan, subset=train,
+                  family=binomial(),
+                  method='MCMC',
+                  MCMC.iterations = 5000)  #short run to check timing
+diagnostics(car.bas)
+image(car.bas)
+
+car.bas = bas.glm(step.car$formula, betaprior=aic.prior(), 
+                  data=Caravan, subset=train,
+                  family=binomial(),
+                  method='MCMC',
+                  MCMC.iterations = 50000)  #longer run to check convergence object takes over 4.3 MB 
+
+diagnostics(car.bas)
+image(car.bas)
+```
+```{r, eval=FALSE}
+pred = predict(car.bas, newdata=Caravan[-train,], type="response", estimator="HPM")
+
+table(pred$fit > .25, Caravan[-train, "Purchase"])
+```

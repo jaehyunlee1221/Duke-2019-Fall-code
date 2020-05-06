@@ -1,0 +1,237 @@
+---
+title: 'STA 601/360 Homework9'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+library(foreign)
+library(truncnorm)
+library(knitr)
+require(magrittr)
+require(plyr)
+library(coda)
+library(patchwork)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW9 for STA-601
+
+## Exercise 1
+
+Fit the linear regression on glu with other varables
+
+```{r}
+diabetes <- read.table("http://www2.stat.duke.edu/~pdh10/FCBS/Exercises/azdiabetes.dat", header = T)
+#data
+Y <- as.matrix(diabetes[,2, drop = F])
+X <- model.matrix(lm(glu ~ . - diabetes ,data = diabetes))
+n <- nrow(diabetes)
+lm.1 <- lm(glu ~ . - diabetes ,data = diabetes)
+lm.1$coefficients
+#prior
+prior <- list(nu0 = 2,
+          sigma0 = 1)
+```
+
+
+#### a)
+
+$$
+\begin{aligned}
+&P(\beta) \sim N(0, g\sigma^2(X^TX)^{-1}) \rightarrow P(\beta \mid \mathbf{X,Y},\sigma^2) \sim N(\frac{g}{g+1}(X^TX)^{-1}X^TY, \frac{g}{g+1}\sigma^2(X^TX)^{-1}) \\
+&P(1/\sigma^2) \sim gamma(\nu_0/2, \nu_0\sigma_0^2/2) \rightarrow P(1/\sigma^2 \mid \mathbf{X,Y}) \sim gamma((\nu_0+n)/2, (\nu_0\sigma^2_0 + SSR_g)/2) \\
+&where \; SSR_g = Y^T(I - \frac{g}{g+1}X(X^TX)^{-1}X^T)Y
+\end{aligned}
+$$
+
+```{r}
+sigma <- rep(NA,10000)
+beta <- matrix(rep(NA,10000*dim(X)[2]), ncol = dim(X)[2])
+SSR <- t(Y)%*%(diag(1,nrow = n) - (n/(n+1))*X %*% solve(t(X) %*% X) %*% t(X)) %*% Y
+for(i in 1:10000){
+  nu0 <- prior$nu0; sigma0 <- prior$sigma0
+  #post dist for sigma
+  sigma[i] <- rgamma(1, (nu0 + n)/2, (nu0*sigma0 + SSR)/2)^(-1)
+  beta[i,] <- MASS::mvrnorm(n=1, mu = (n/(n+1))*solve(t(X)%*%X)%*%t(X)%*%Y,
+                            n/(n+1)*sigma[i]*solve(t(X)%*%X))
+}
+CI_sigma <- quantile(sigma, c(0.025,0.975))
+CI_beta <- apply(beta, 2, quantile, c(0.025,0.975)) %>% 
+  `colnames<-`(paste("beta",0:6,sep = ""))
+kable(CI_sigma, caption = "confidence interval for sigma")
+kable(CI_beta, caption = "confidence interval for beta")
+```
+
+
+#### b)
+
+Under following model, execute  
+
+$$
+\begin{aligned}
+&y \mid X,z,\sigma^2,\beta \sim N(X_z\beta, \sigma^2 I_n)\\
+&\beta \mid X,z,\sigma^2 \sim N(0, g\sigma^2(X^T_zX_z)^{-1}) \\ 
+& \sigma^2 \mid X,z \sim gamma(\nu_0/2, \nu_0\sigma^2_z/2)\\
+&P(z_j = 1) = 1/2 \; for \; j = 1,2,\cdot\cdot\cdot, p
+\end{aligned}
+$$
+The posterior distribution of each $P(z_j = 1 \mid z_{-j}, y,X) = \frac{o_j}{o_j+1}$ where 
+
+$$
+\begin{aligned}
+o_j &= \frac{P(z_j = 1)}{P(z_j = 0)} \times \frac{P(y\mid X,z_{-j},z_j=1)}{P(y\mid X,z_{-j},z_j=0)} \\
+&= \frac{P(y\mid X,z_{-j},z_j=1)}{P(y\mid X,z_{-j},z_j=0)}\\
+&= (1+n)^{-1/2} * (\frac{\nu_0\sigma^2_0 + SSR^{z_a}_g}{\nu_0\sigma^2_0 + SSR^{z_b}_g})  
+\end{aligned}
+$$
+where $SSR^{z_a}_g$ is $SSR_g$ of $z_j = 0$ and $SSR^{z_b}_g$ is $SSR_g$ of $z_j = 1$ 
+
+for $P(z_j = 1) = P(z_j = 0)$.
+
+
+```{r}
+bf <- function(model, Y, X){
+  n <- dim(X)[1]; p <- dim(X)[2]
+  nu0 <- prior$nu0; sigma0 <- prior$sigma0
+  z <- sum(model)
+  Xz <- X[,model == 1, drop = FALSE]
+  SSR <- t(Y)%*%(diag(1,n) - n/(n+1)*Xz%*%solve(t(Xz)%*%Xz)%*%t(Xz))%*%Y
+  result <- -0.5*(n*log(pi) + sum(z)*log(1+n) + (nu0+n)*log(nu0*sigma0 + SSR) - nu0*log(nu0*sigma0)) +
+    lgamma((nu0+n)/2) - lgamma(nu0/2)
+  return(result)
+}
+
+model <- rep(1,dim(X)[2])
+Z <- matrix(rep(0,10000*dim(X)[2]),ncol = dim(X)[2])
+bf.1 <- bf(model, Y, X)
+sigma2 <- rep(0,10000)
+beta2 <-  matrix(rep(0,10000*dim(X)[2]),ncol = dim(X)[2])
+
+for(i in 1:10000){
+  p <- dim(X)[2]
+  for(j in sample(1:p)){
+    zp <- model; zp[j] <- 1-zp[j]
+    bf.2 <- bf(zp, Y, X)
+    r <- (bf.2 - bf.1)*(-1)^(zp[j]==0)
+    model[j] <- rbinom(1,1,1/(1+exp(-r)))
+    if(model[j] == zp[j]) {bf.1 <- bf.2}
+  }
+  Z[i,] <- model
+  Xz <- X[,model == 1, drop = F]
+  Y <- diabetes$glu
+  SSR <- t(Y)%*%(diag(1,nrow = n) - (n/(n+1))*Xz %*% solve(t(Xz) %*% Xz) %*% t(Xz)) %*% Y
+  sigma2[i] <- rgamma(1, (nu0 + n)/2, (nu0*sigma0 + SSR)/2)^(-1)
+  beta2[i,which(model == 1)] <- MASS::mvrnorm(n=1, mu = (n/(n+1))*solve(t(Xz)%*%Xz)%*%t(Xz)%*%Y,
+                            n/(n+1)*sigma[i]*solve(t(Xz)%*%Xz))  
+}
+```
+The posterior distribution for $P(\beta_j \not= 0)$ is posterior distribution of $P(z_j \not= 0)$
+
+```{r}
+kable(t(apply(Z, 2, function(x){mean(x == 1)})),col.names = paste("beta",0:6,sep = ""),caption = "posterior distribution of probability that beta_j is not zero")
+```
+Posterior confidence interval for $beta$ and $sigma^2$ are 
+```{r}
+CI_sigma2 <- quantile(sigma2, c(0.025,0.975))
+CI_beta2 <- apply(beta2, 2, quantile, c(0.025,0.975)) %>% 
+  `colnames<-`(paste("beta",0:6,sep = ""))
+kable(rbind(CI_sigma,CI_sigma2), caption = "confidence interval for sigma from a and b")
+kable(rbind(CI_beta,CI_beta2), caption = "confidence interval for beta from a and b")
+```
+
+We can see that posterior confidence interval for $\sigma^2$ of (b) is very simliar with (a). However, in the case of beta, the coffcients of beta which are relatively close to 0 are converged to 0 at confidence interval in the (b).
+
+## Exercise 2
+model is as followed:
+
+$$
+\begin{aligned}
+&Y_i \mid X_i,z,\beta,\sigma^2 \sim N((z\cdot\beta)^tX_i,\sigma^2) \\
+&where \; z \cdot \beta = (z_1\beta_1,\cdots, z_p\beta_p) \\
+&\beta_j \mid z_j \sim (1-z_j)N(0,\tau_j^2) + z_jN(0,c_j^2\tau_j^2) \\ 
+&P(z_j = 1) = 1/2 \\
+&1/\sigma^2 \sim gamma
+\end{aligned}
+$$
+With given initial values of $\beta, \sigma, and \; \gamma$, their full conditional distributions are shown below:
+$$
+\begin{aligned}
+&\beta^j \sim f(\beta^j \mid \mathbf{Y}, \sigma^{j-1}, \gamma^{j-1}) = N_p(A_{\gamma^{j-1}}(\sigma^{j-1})^{-2}X^TX \hat{\beta_{OLS}}, A_{\gamma^{j-1}}) \\
+&where \; A_{\gamma^{j-1}} = ((\sigma^{j-1})^{-2}X^TX + D^{-1}_{\gamma{j-1}}R^{-1}D^{-1}_{\gamma{j-1}})^{-1} \\
+&note \; D^{-1}_{\gamma{j-1}} = diag[(a_1\tau_1)^{-1}, \ldots, (a_p\tau_p)^{-1}]
+\end{aligned}
+$$
+for $\sigma$
+
+$$
+\begin{aligned}
+\sigma^{j} \sim f(\sigma^{j} \mid \mathbf{Y}, \beta^j, \gamma^{j-1}) = IG(\frac{n+\nu_{\gamma^{j-1}}}{2}, \frac{\mid \mathbf{Y - X}\beta^j \mid^2 + \nu_{\gamma^{j-1}}\lambda_{\gamma^{j-1}}}{2})
+\end{aligned}
+$$
+Finally, for the model, 
+$$
+\begin{aligned}
+&\gamma_i^j \sim Bernoulli(\frac{a}{a+b}) \\
+&where \; a = f(\beta^j \mid \gamma^j_{(i)}, \gamma_i^j = 1) \times f(\sigma^j \mid \gamma^j_{(i)}, \gamma^j_i = 1) \times f(\gamma^j_{(j)}, \gamma_i^j = 1), \\
+& b = f(\beta^j \mid \gamma^j_{(i)}, \gamma_i^j = 0) \times f(\sigma^j \mid \gamma^j_{(i)}, \gamma^j_i = 0) \times f(\gamma^j_{(j)}, \gamma_i^j = 0)
+\end{aligned}
+$$
+
+
+```{r}
+Y <- diabetes$glu
+X <- model.matrix(lm(glu ~ . -diabetes,data=diabetes))
+prior <- prior
+
+beta3 <- array(rep(0,10000*dim(X)[2]*5), dim = c(10000,dim(X)[2],5)) 
+sigma3 <- rep(0,10000)
+gamma <- matrix(rep(0,10000*dim(X)[2]), ncol = dim(X)[2])
+model <- rep(1,dim(X)[2])
+sigma_cur <- 500; beta_cur <- coef(lm(glu ~ . -diabetes, data = diabetes))
+
+tau <- matrix(rep(seq(.1, 0.5, 0.1),dim(X)[2]),ncol = dim(X)[2])
+c <- matrix(rep(seq(5, 25, 5),dim(X)[2]),ncol = dim(X)[2])
+for(k in 1:5){
+  for(i in 1:10000){
+    p <- dim(X)[2]
+    D <- diag((1-model+c[k,]*model)*tau[k,])
+    #update beta
+    var_beta <- solve(sigma_cur^(-1) * t(X) %*% X + D^2)
+    E_beta <- var_beta %*% t(X) %*% Y /sigma_cur 
+    beta3[i,,k] <- beta_cur <- MASS::mvrnorm(1, E_beta, var_beta)
+    
+    #update sigma
+    SSE <- sum((Y- X%*%beta_cur)^2)
+    sigma3[i] <- sigma_cur <- rgamma(1, (prior$nu0 + n)/2,(SSE + prior$nu0*prior$sigma0)/2)
+    
+    
+    for(j in sample(1:p)){
+      zp <- model; zp[j] <- 1-zp[j]; Dp <- diag((1-zp + c[k,]*zp)*tau[k,])
+      Xz <- X[,zp == 1,drop = F]
+      yes <- mvtnorm::dmvnorm(beta_cur, rep(0,p), D, log = T) 
+      no <- mvtnorm::dmvnorm(beta_cur, rep(0,p), Dp, log = T)
+      r <- (yes - no)*(-1)^(model[j]==0)
+      model[j] <- rbinom(1,1,1/(1+exp(-r)))
+    }
+    gamma[i,] <- model
+  }
+}
+```
+
+Confidence interval for each $c$ and $tau$ value, are presented at below: 
+
+```{r}
+kable(apply(beta3[,,1], 2, quantile, c(0.025,0.975)), caption = paste("c = ",c[1],", tau = ", tau[1],sep = ""))
+kable(apply(beta3[,,2], 2, quantile, c(0.025,0.975)), caption = paste("c = ",c[2],", tau = ", tau[2],sep = ""))
+kable(apply(beta3[,,3], 2, quantile, c(0.025,0.975)), caption = paste("c = ",c[3],", tau = ", tau[3],sep = ""))
+kable(apply(beta3[,,4], 2, quantile, c(0.025,0.975)), caption = paste("c = ",c[4],", tau = ", tau[4],sep = ""))
+kable(apply(beta3[,,5], 2, quantile, c(0.025,0.975)), caption = paste("c = ",c[5],", tau = ", tau[5],sep = ""))
+```
+We can find that as c and tau values are increasing, estimation for betas are decreasing.

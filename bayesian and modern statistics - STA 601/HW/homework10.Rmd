@@ -1,0 +1,88 @@
+---
+title: 'STA 601/360 Homework10'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+
+# HW10 for STA-601
+
+## Exercise 1
+
+Show that $\tilde{\theta} ~ \sim uniform(\theta_0 - \delta,\theta_0+\delta)$ if $\tilde{\theta} <0, \theta_1 = -\tilde{\theta}$ and if $\tilde\theta >= 0, \theta_1 = \tilde \theta$ then proposal function $J(\theta_1 \mid \theta_0)$ is symmetric 
+
+When $\theta_0 > \delta$, proposal function
+$$
+\begin{aligned}
+&J(\theta_1 \mid \theta_0 > \delta) \sim uniform(\theta_0-\delta, \theta_0+\delta) \\
+&\rightarrow P(\theta_1 \mid \theta_0 >\delta) = \frac{1}{2\delta} \; where \;\theta_1 \in [\theta_0 - \delta, \theta_0+\delta] 
+\end{aligned}
+$$
+When it reversed, 
+$$
+\begin{aligned}
+&J(\theta_0 \mid \theta_1 > \delta) \sim uniform(\theta_1-\delta, \theta_1+\delta) \\
+&\rightarrow P(\theta_0 \mid \theta_1 >\delta) = \frac{1}{2\delta} \; where \;\theta_0 \in [\theta_1 - \delta, \theta_1+\delta] 
+\end{aligned}
+$$
+Thus we can conclude that proposal function $J(\theta_1 \mid \theta_0)$ is symmetric when $\theta_0 > \delta$.
+On the other hand, if $\theta_0 < \delta$, 
+$$
+\begin{aligned}
+J(\theta_1 \mid \theta_0 < \delta) \\
+\rightarrow P(\theta_1 \mid \theta_0 < \delta) &= \frac{1}{\delta} \; where \; \theta_1 \in [0,\delta-\theta_0] \\
+&= \frac{1}{2\delta} \; where \; \theta_1 \in [\delta-\theta_0, \theta_0 + \delta] 
+\end{aligned}
+$$
+In the same way, 
+$$
+\begin{aligned}
+J(\theta_0 \mid \theta_1 < \delta) \\
+\rightarrow P(\theta_0 \mid \theta_1 < \delta) &= \frac{1}{\delta} \; where \; \theta_0 \in [0,\delta-\theta_1] \\
+&= \frac{1}{2\delta} \; where \; \theta_0 \in [\delta-\theta_1, \theta_1 + \delta] 
+\end{aligned}
+$$
+Consequently, we can confirm that $J\theta_1 \mid \theta_0$ is symmetric in both cases.
+
+## Exercise 2 
+consider sample model,
+$y_1, \cdots, y_n \mid \theta \sim P(y \mid \theta_1,\theta_2)$,
+and prior, $\theta_1 \sim g(\theta_1), \theta_2 \sim h(\theta_2)$.
+Write down the simplest form possible the acceptance probability for MH.
+
+our target distribution is $P(\theta_1, \theta_2 \mid y_1 \cdots y_n)$
+
+When proposal function is full conditional, $J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)}) = p(\theta_1 \mid y_1 \cdots, y_n, \theta_2^{(s)})$
+$$
+\begin{aligned}
+r &= \frac{p(\theta_1^*,\theta_2^{(s)} \mid y_1 \cdots y_n)}{p(\theta_1^{(s)},\theta_2^{(s)} \mid y_1 \cdots y_n)} \times \frac{J(\theta_1^{(s)} \mid \theta_1^*,\theta_2^{(s)})}{J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)})} \\ &= \frac{p(\theta_1^*,\theta_2^{(s)} \mid y_1 \cdots y_n)}{p(\theta_1^{(s)},\theta_2^{(s)} \mid y_1 \cdots y_n)} \times \frac{p(\theta_1^{(s)} \mid \theta_2^{(s)}, y_1 \cdots y_n)}{p(\theta_1^* \mid \theta_2^{(s)}, y_1 \cdots y_n)} \\
+&= \frac{p(\theta_1^* \mid \theta_2^{(s)}, y_1 \cdots y_n)}{p(\theta_1^{(s)} \mid \theta_2^{(s)}, y_1 \cdots y_n)} \times \frac{p(\theta_2 \mid y_1 \cdots y_n)}{p(\theta_2 \mid y_1 \cdots y_n)} \times \frac{p(\theta_1^{(s)} \mid \theta_2^{(s)}, y_1 \cdots y_n)}{p(\theta_1^* \mid \theta_2^{(s)}, y_1 \cdots y_n)} \\
+&= 1
+\end{aligned}
+$$
+When proposal function is $J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)}) = g(\theta_1)$
+$$
+\begin{aligned}
+r &= \frac{p(\theta_1^*,\theta_2^{(s)} \mid y_1 \cdots y_n)}{p(\theta_1^{(s)},\theta_2^{(s)} \mid y_1 \cdots y_n)} \times \frac{J(\theta_1^{(s)} \mid \theta_1^*,\theta_2^{(s)})}{J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)})}  \\ &=  \frac{h(\theta_2^{(s)})g(\theta_1^*)p(y_1 \cdots y_n \mid \theta_1^*,\theta_2^{(s)})}{h(\theta_2^{(s)})g(\theta_1^{(s)})p(y_1 \cdots y_n \mid \theta_1^{(s)},\theta_2^{(s)})} \times \frac{g(\theta_1^*)}{g(\theta_1^{(s)})} \\
+&= \frac{p(y_1 \cdots y_n \mid \theta_1^*, \theta_2^{(s)})}{p(y_1 \cdots y_n \mid \theta_1^{(s)}, \theta_2^{(s)})}
+\end{aligned}
+$$
+When proposal function is $J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)}) = N(\theta_1^{(s)},\delta^2)$
+$$
+\begin{aligned}
+J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)}) &= dnorm(\theta_1^{(s)}, \delta^2) \\
+&\propto exp({-\frac{(\theta_1^* - \theta_1^{(s)})^2}{2}}) \\
+& = exp({-\frac{(\theta_1^{(s)} - \theta_1^*)^2}{2}}) = J(\theta_1^{(s)} \mid \theta_1^*, \theta_2^{(s)})
+\end{aligned}
+$$
+Then 
+$$
+\begin{aligned}
+r &= \frac{p(\theta_1^*,\theta_2^{(s)} \mid y_1 \cdots y_n)}{p(\theta_1^{(s)},\theta_2^{(s)} \mid y_1 \cdots y_n)} \times \frac{J(\theta_1^{(s)} \mid \theta_1^*,\theta_2^{(s)})}{J(\theta_1^* \mid \theta_1^{(s)},\theta_2^{(s)})}  \\ &=  \frac{h(\theta_2^{(s)})g(\theta_1^*)p(y_1 \cdots y_n \mid \theta_1^*,\theta_2^{(s)})}{h(\theta_2^{(s)})g(\theta_1^{(s)})p(y_1 \cdots y_n \mid \theta_1^{(s)},\theta_2^{(s)})} \times 1 \\
+& = \frac{g(\theta_1^*)p(y_1 \cdots y_n \mid \theta_1^*, \theta_2^{(s)})}{g(\theta_1^{(s)})p(y_1 \cdots y_n \mid \theta_1^{(s)}, \theta_2^{(s)})}
+\end{aligned}
+$$

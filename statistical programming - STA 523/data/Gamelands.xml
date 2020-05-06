@@ -1,0 +1,1743 @@
+<?xml version="1.0" encoding="UTF-8"?><MD_Metadata xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:srv="http://www.isotc211.org/2005/srv" xmlns:gts="http://www.isotc211.org/2005/gts" xmlns:xalan="http://xml.apache.org/xalan" xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gml="http://www.opengis.net/gml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.isotc211.org/2005/gmd">
+<fileIdentifier>
+<gco:CharacterString>1503685416687r7121793466822357</gco:CharacterString>
+</fileIdentifier>
+<language>
+<LanguageCode codeList="http://www.loc.gov/standards/iso639-2/php/code_list.php" codeListValue="eng" codeSpace="ISO639-2">eng</LanguageCode>
+</language>
+<characterSet>
+<MD_CharacterSetCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_CharacterSetCode" codeListValue="utf8" codeSpace="ISOTC211/19115">utf8</MD_CharacterSetCode>
+</characterSet>
+<hierarchyLevel>
+<MD_ScopeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ScopeCode" codeListValue="dataset" codeSpace="ISOTC211/19115">dataset</MD_ScopeCode>
+</hierarchyLevel>
+<hierarchyLevelName>
+<gco:CharacterString>dataset</gco:CharacterString>
+</hierarchyLevelName>
+<contact>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Isaac Harrold</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>North Carolina Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Lands Program Manager</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>(919) 707-0152</gco:CharacterString>
+</voice>
+<voice>
+<gco:CharacterString>(919) 707-0053</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>(919) 707-0162</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1720 Mail Service Center</gco:CharacterString>
+</deliveryPoint>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>isaac.harrold@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:00AM - 5:00PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="pointOfContact" codeSpace="ISOTC211/19115">pointOfContact</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</contact>
+<dateStamp>
+<gco:Date>2016-09-07</gco:Date>
+</dateStamp>
+<metadataStandardName>
+<gco:CharacterString>ISO 19139 Geographic Information - Metadata - Implementation Specification</gco:CharacterString>
+</metadataStandardName>
+<metadataStandardVersion>
+<gco:CharacterString>2007</gco:CharacterString>
+</metadataStandardVersion>
+<spatialRepresentationInfo>
+<MD_VectorSpatialRepresentation>
+<geometricObjects>
+<MD_GeometricObjects>
+<geometricObjectType>
+<MD_GeometricObjectTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_GeometricObjectTypeCode" codeListValue="complex" codeSpace="ISOTC211/19115">complex</MD_GeometricObjectTypeCode>
+</geometricObjectType>
+<geometricObjectCount>
+<gco:Integer>1403</gco:Integer>
+</geometricObjectCount>
+</MD_GeometricObjects>
+</geometricObjects>
+</MD_VectorSpatialRepresentation>
+</spatialRepresentationInfo>
+<identificationInfo>
+<MD_DataIdentification>
+<citation>
+<CI_Citation>
+<title>
+<gco:CharacterString>North Carolina Game Lands 2016</gco:CharacterString>
+</title>
+<date>
+<CI_Date>
+<date>
+<gco:Date>2016-09-07</gco:Date>
+</date>
+<dateType>
+<CI_DateTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_DateTypeCode" codeListValue="publication" codeSpace="ISOTC211/19115">publication</CI_DateTypeCode>
+</dateType>
+</CI_Date>
+</date>
+<citedResponsibleParty>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>Raleigh, North Carolina</gco:CharacterString>
+</deliveryPoint>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="publisher" codeSpace="ISOTC211/19115">publisher</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</citedResponsibleParty>
+<citedResponsibleParty>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="originator" codeSpace="ISOTC211/19115">originator</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</citedResponsibleParty>
+<presentationForm>
+<CI_PresentationFormCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_PresentationFormCode" codeListValue="mapDigital" codeSpace="ISOTC211/19115">mapDigital</CI_PresentationFormCode>
+</presentationForm>
+<otherCitationDetails>
+<gco:CharacterString>North Carolina Wildlife Resources Commission and NCCGIA distributes this dataset.</gco:CharacterString>
+</otherCitationDetails>
+</CI_Citation>
+</citation>
+<abstract>
+<gco:CharacterString>The North Carolina Department of Environment and Natural Resources, Wildlife Resources Commission and the NC Center for Geographic Information and Analysis developed the GIS data set, WRC Game Lands, to enhance management and planning, citing and impact analysis in areas directly affecting WRC Game Lands. The North Carolina Wildlife Resources Commission assumed sole responsibility for all updates to the data set after the May 1999 update. The current updates enable the user to identify all publicly-owned Game Lands managed by the North Carolina Wildlife Resources Commission.</gco:CharacterString>
+</abstract>
+<purpose>
+<gco:CharacterString>This data was created to assist governmental agencies and others in making resource management decisions through use of a Geographic Information System (GIS).</gco:CharacterString>
+</purpose>
+<status>
+<MD_ProgressCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ProgressCode" codeListValue="completed" codeSpace="ISOTC211/19115">completed</MD_ProgressCode>
+</status>
+<pointOfContact>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Isaac Harrold</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission, Lands and Water Access Section</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Lands Program Manager</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0053</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0162</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1722 Mail Service Center</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27699-1722</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>isaac.harrold@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8am - 5pm</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>phone or email preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="pointOfContact" codeSpace="ISOTC211/19115">pointOfContact</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</pointOfContact>
+<resourceMaintenance>
+<MD_MaintenanceInformation>
+<maintenanceAndUpdateFrequency>
+<MD_MaintenanceFrequencyCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_MaintenanceFrequencyCode" codeListValue="annually" codeSpace="ISOTC211/19115">annually</MD_MaintenanceFrequencyCode>
+</maintenanceAndUpdateFrequency>
+</MD_MaintenanceInformation>
+</resourceMaintenance>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>USA</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="place" codeSpace="ISOTC211/19115">place</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>USA</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="place" codeSpace="ISOTC211/19115">place</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>environment</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="theme" codeSpace="ISOTC211/19115">theme</MD_KeywordTypeCode>
+</type>
+<thesaurusName>
+<CI_Citation>
+<title>
+<gco:CharacterString>ISO 19115 Topic Category</gco:CharacterString>
+</title>
+<date gco:nilReason="missing"/>
+</CI_Citation>
+</thesaurusName>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>gamelands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>conservation lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>game lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>hunting</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>wildlife</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="theme" codeSpace="ISOTC211/19115">theme</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>gamelands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>conservation lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>game lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>hunting</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>wildlife</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="theme" codeSpace="ISOTC211/19115">theme</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>gamelands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>conservation lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>game lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>hunting</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>wildlife</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="theme" codeSpace="ISOTC211/19115">theme</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>gamelands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>conservation lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>game lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>hunting</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>wildlife</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="theme" codeSpace="ISOTC211/19115">theme</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>gamelands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>conservation lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>game lands</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>hunting</gco:CharacterString>
+</keyword>
+<keyword>
+<gco:CharacterString>wildlife</gco:CharacterString>
+</keyword>
+<type>
+<MD_KeywordTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_KeywordTypeCode" codeListValue="theme" codeSpace="ISOTC211/19115">theme</MD_KeywordTypeCode>
+</type>
+</MD_Keywords>
+</descriptiveKeywords>
+<descriptiveKeywords>
+<MD_Keywords>
+<keyword>
+<gco:CharacterString>Downloadable Data</gco:CharacterString>
+</keyword>
+<thesaurusName uuidref="723f6998-058e-11dc-8314-0800200c9a66"/>
+</MD_Keywords>
+</descriptiveKeywords>
+<resourceConstraints>
+<MD_Constraints>
+<useLimitation>
+<gco:CharacterString>Boundaries are approximate and should not be used for regulatory purposes. Acknowledgement of products derived from this data set should cite the following: The source of the North Carolina Wildlife Resources Commission Game Land Maps data is the North Carolina Wildlife Resources Commission. While efforts have been made to ensure that these data are accurate and reliable within the state of the art, NCWRC cannot assume liability for any damages or misrepresentation caused by any inaccuracies in the data or as a result of changes to the data caused by system transfers.</gco:CharacterString>
+</useLimitation>
+</MD_Constraints>
+</resourceConstraints>
+<resourceConstraints>
+<MD_LegalConstraints>
+<useLimitation>
+<gco:CharacterString>NCCGIA is charged with the development and maintenance of the State's corporate geographic database and, in cooperation with other mapping organizations, is committed to offering its users accurate, useful, and current information about the state. Although every effort has been made to ensure the accuracy of information, errors and conditions originating from physical sources used to develop the corporate database may be reflectedin the data supplied. The client must be aware of data conditions and bear responsibility for the appropriate use of the information with respect to possible errors, original map scale, collection methodology, currency of data, and other conditions specific to certain data. NCCGIA does not support secondary distribution of this data. The use of trade names or commercial products does not constitute their endorsement by the NCCGIA or North Carolina State Government.</gco:CharacterString>
+</useLimitation>
+</MD_LegalConstraints>
+</resourceConstraints>
+<spatialRepresentationType>
+<MD_SpatialRepresentationTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_SpatialRepresentationTypeCode" codeListValue="vector" codeSpace="ISOTC211/19115">vector</MD_SpatialRepresentationTypeCode>
+</spatialRepresentationType>
+<language>
+<LanguageCode codeList="http://www.loc.gov/standards/iso639-2/php/code_list.php" codeListValue="eng" codeSpace="ISO639-2">eng</LanguageCode>
+</language>
+<characterSet>
+<MD_CharacterSetCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_CharacterSetCode" codeListValue="utf8" codeSpace="ISOTC211/19115">utf8</MD_CharacterSetCode>
+</characterSet>
+<topicCategory>
+<MD_TopicCategoryCode>environment</MD_TopicCategoryCode>
+</topicCategory>
+<environmentDescription>
+<gco:CharacterString>Microsoft Windows Professional Version 7 Service Pack 1; ESRI ArcCatalog 10.4</gco:CharacterString>
+</environmentDescription>
+<extent>
+<EX_Extent>
+<geographicElement>
+<EX_GeographicBoundingBox>
+<westBoundLongitude>
+<gco:Decimal>-84.383623</gco:Decimal>
+</westBoundLongitude>
+<eastBoundLongitude>
+<gco:Decimal>-75.492762</gco:Decimal>
+</eastBoundLongitude>
+<southBoundLatitude>
+<gco:Decimal>33.895945</gco:Decimal>
+</southBoundLatitude>
+<northBoundLatitude>
+<gco:Decimal>36.617295</gco:Decimal>
+</northBoundLatitude>
+</EX_GeographicBoundingBox>
+</geographicElement>
+</EX_Extent>
+</extent>
+<extent>
+<EX_Extent>
+<description>
+<gco:CharacterString>publication date</gco:CharacterString>
+</description>
+<temporalElement>
+<EX_TemporalExtent>
+<extent>
+<gml:TimeInstant gml:id="N65742">
+<gml:timePosition>2016-09-07</gml:timePosition>
+</gml:TimeInstant>
+</extent>
+</EX_TemporalExtent>
+</temporalElement>
+</EX_Extent>
+</extent>
+</MD_DataIdentification>
+</identificationInfo>
+<distributionInfo>
+<MD_Distribution>
+<distributor>
+<MD_Distributor>
+<distributorContact>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>NC Center for Geographic Information and Analysis</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Database Administration</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919-754-6580</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919-715-8551</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>3301 N. Wilmington St.</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27601</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>nconemap@nc.gov</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:30AM - 5:30PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="distributor" codeSpace="ISOTC211/19115">distributor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</distributorContact>
+<distributionOrderProcess>
+<MD_StandardOrderProcess>
+<fees>
+<gco:CharacterString>None. Download from www.nconemap.gov is free of charge.</gco:CharacterString>
+</fees>
+<plannedAvailableDateTime>
+<gco:DateTime>1990-01-01T00:00:00</gco:DateTime>
+</plannedAvailableDateTime>
+</MD_StandardOrderProcess>
+</distributionOrderProcess>
+<distributorFormat>
+<MD_Format>
+<name>
+<gco:CharacterString>ESRI shapefile (*.shp)</gco:CharacterString>
+</name>
+<version gco:nilReason="missing"/>
+</MD_Format>
+</distributorFormat>
+<distributorTransferOptions>
+<MD_DigitalTransferOptions>
+<transferSize>
+<gco:Real>8.84</gco:Real>
+</transferSize>
+<onLine>
+<CI_OnlineResource>
+<linkage>
+<URL>http://data.nconemap.gov/downloads/vector/gml.zip</URL>
+</linkage>
+</CI_OnlineResource>
+</onLine>
+</MD_DigitalTransferOptions>
+</distributorTransferOptions>
+</MD_Distributor>
+</distributor>
+<transferOptions>
+<MD_DigitalTransferOptions>
+<onLine>
+<CI_OnlineResource>
+<linkage>
+<URL>http://www.ncwildlife.org/</URL>
+</linkage>
+</CI_OnlineResource>
+</onLine>
+</MD_DigitalTransferOptions>
+</transferOptions>
+</MD_Distribution>
+</distributionInfo>
+<dataQualityInfo>
+<DQ_DataQuality>
+<scope>
+<DQ_Scope>
+<level>
+<MD_ScopeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ScopeCode" codeListValue="dataset" codeSpace="ISOTC211/19115">dataset</MD_ScopeCode>
+</level>
+</DQ_Scope>
+</scope>
+<report>
+<DQ_TopologicalConsistency>
+<evaluationMethodDescription>
+<gco:CharacterString>Using ESRI's ARC/INFO GIS software, the dataset was built for arc and polygon topology using the "build" command. The data set was then cleaned with a fuzzy tolerance of 1 foot. Topology has not been edited since the last build or clean. Subsequent additions have been acquired from a combination of county parcel data, digitizing from aerial photos, GPS information, and boundary estimation.</gco:CharacterString>
+</evaluationMethodDescription>
+<result gco:nilReason="missing"/>
+</DQ_TopologicalConsistency>
+</report>
+<report>
+<DQ_ConceptualConsistency>
+<measureDescription>
+<gco:CharacterString>Using ESRI's ARC/INFO GIS software, the dataset was built for arc and polygon topology using the "build" command. The data set was then cleaned with a fuzzy tolerance of 1 foot. Topology has not been edited since the last build or clean. Subsequent additions have been acquired from a combination of county parcel data, digitizing from aerial photos, GPS information, and boundary estimation.</gco:CharacterString>
+</measureDescription>
+<result gco:nilReason="missing"/>
+</DQ_ConceptualConsistency>
+</report>
+<report>
+<DQ_CompletenessOmission>
+<measureDescription>
+<gco:CharacterString>These data represent all publicly-owned and managed Game Lands, or those managed cooperatively as Game Lands by the NC Wildlife Resources Commission.</gco:CharacterString>
+</measureDescription>
+<result gco:nilReason="missing"/>
+</DQ_CompletenessOmission>
+</report>
+<report>
+<DQ_QuantitativeAttributeAccuracy>
+<measureDescription>
+<gco:CharacterString>The NC Wildlife Resources Commission originally delineated the Game Lands onto mylar overlays mapped at 1:100,000 scale. NC CGIA digitized these areas and attributed them with Game Land name, type, owner, and public or private status. Attributes were checked by WRC staff. Subsequent updates and additions were made as previously outlined.</gco:CharacterString>
+</measureDescription>
+<result gco:nilReason="missing"/>
+</DQ_QuantitativeAttributeAccuracy>
+</report>
+<report>
+<DQ_AbsoluteExternalPositionalAccuracy>
+<measureDescription>
+<gco:CharacterString>Game Lands were originally marked on 1:100,000 USGS dlg overlays, which meet National Map Accuracy Standards, using a best estimate with reference to surrounding features. Boundaries drawn were digitized and check plots used to ensure correct boundary location. Subsequent updates have been incorporated using a variety of methods including GPS, digitizing from aerial photography, and cadastral boundary information.</gco:CharacterString>
+</measureDescription>
+<result gco:nilReason="missing"/>
+</DQ_AbsoluteExternalPositionalAccuracy>
+</report>
+<lineage>
+<LI_Lineage>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>The original boundaries of the publicly owned Game Lands in North Carolina were recompiled from the "Hunting and Fishing Maps for North Carolina Game Lands, 1989-90" onto USGS 1:100,000-scale topographic maps. The linework was digitized by NCCGIA then it was checked by light table review. Any necessary corrections were made and new check plots were run. Post processing involved edgematching and mapjoining accross map borders to create the final statewide data set.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>1990-01-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>NC Center for Geographic Information and Analysis</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Database Administration</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919-754-6580</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919-715-8551</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>3301 N. Wilmington St.</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27601</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>nconemap@nc.gov</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:30AM - 5:30PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>1999 boundary updates and additions were incorporated into the file from various sources: digital data files from diskette, paper maps showing general location (boundaries input from coincident road and hydrography features using Arcedit), paper maps showing metes and bounds coordinates (boundaries input using a menu-driven program acquired from the State Property office), etc. The diskettes and maps were supplied by the Wildlife Resources Commission. NC Wildlife Resources Commission supplies CGIA with updates yearly.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>1999-01-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>NC Center for Geographic Information and Analysis</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Database Administration</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919-754-6580</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919-715-8551</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>301 N. Wilmington St.</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27601</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>nconemap@nc.gov</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:30AM - 5:30PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2000 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: digital data files from diskette, paper maps showing general location (boundaries input from coincident road and hydrography features using ArcEdit), paper maps showing metes and bounds coordinates.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2000-01-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>North Carolina Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Wildlife Biologist, GIS</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>(919) 733-7291</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>(919)733-2176</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>512 N. Salisbury Street</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27604-1188</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>howelld@mail.wildlife.state.nc.us</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:00AM - 5:00PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2002 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: digital data files from diskette, paper maps showing general location (boundaries input from coincident road and hydrography features using ArcEdit), paper maps showing metes and bounds coordinates.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2001-01-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>North Carolina Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Wildlife Biologist, GIS</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.733.7291</gco:CharacterString>
+</voice>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>howelld@mail.wildlife.state.nc.us</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:00AM - 5:00PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2001 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: digital data files from diskette, paper maps showing general location (boundaries input from coincident road and hydrography features using ArcEdit), paper maps showing metes and bounds coordinates.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2001-01-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<organisationName>
+<gco:CharacterString>North Carolina Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Wildlife Biologist, GIS</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>(919) 733-7291</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>(919)733-2176</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>512 N. Salisbury Street</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27604-1188</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>howelld@mail.wildlife.state.nc.us</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8:00AM - 5:00PM</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>Phone and electronic mail preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2005 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2005-08-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Scott Anderson</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>North Carolina Wildlife Resources Commission - Division of Wildlife Management</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>GIS Biologist</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0054</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0067</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1722 Mail Service Center</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27699-1722</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>scott.anderson@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8am-9pm</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>phone or email contact preferred</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2006 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2006-07-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Scott Anderson</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>GIS Biologist</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0054</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0067</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>scott.anderson@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8am-5pm</gco:CharacterString>
+</hoursOfService>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2007 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2007-07-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Kelsey Obernuefemann</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>GIS Specialist</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919-707-0068</gco:CharacterString>
+</voice>
+<voice>
+<gco:CharacterString>919-707-0050</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919-707-0067</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1722 Mail Service Center</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27699-1722</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>kelsey.obernuefemann@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2008 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2008-07-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Kelsey Obernuefemann</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission, Division of Wildlife Management</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>GIS Biologist</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919-707-0068</gco:CharacterString>
+</voice>
+<voice>
+<gco:CharacterString>919-707-0050</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919-707-0067</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Dr</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>kelsey.obernuefemann@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+<hoursOfService>
+<gco:CharacterString>8am - 5pm</gco:CharacterString>
+</hoursOfService>
+<contactInstructions>
+<gco:CharacterString>phone or email</gco:CharacterString>
+</contactInstructions>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2010 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2010-08-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Scott Anderson</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<positionName>
+<gco:CharacterString>Lead GIS Biologist</gco:CharacterString>
+</positionName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0054</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0067</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1722 Mail Service Center</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>North Carolina</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27699-1722</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>scott.anderson@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2011 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2011-08-02T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Kimberly Burge &amp; Kelsey Obernuefemann</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0053</gco:CharacterString>
+</voice>
+<voice>
+<gco:CharacterString>919.707.0052</gco:CharacterString>
+</voice>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>isaac.harrold@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+<source>
+<LI_Source/>
+</source>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2012 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2011-08-02T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Kelsey Obernuefemann</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0053</gco:CharacterString>
+</voice>
+<voice>
+<gco:CharacterString>919.707.0052</gco:CharacterString>
+</voice>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>isaac.harrold@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+<source>
+<LI_Source/>
+</source>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2013 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2013-08-01T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Anna Stefanowicz</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0152</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0162</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>anna.stefanowiczd@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+<source>
+<LI_Source/>
+</source>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2014 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2014-09-08T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Anna Stefanowicz</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0152</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0162</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>anna.stefanowiczd@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+<source>
+<LI_Source/>
+</source>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2015 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2015-09-21T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Anna Stefanowicz</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0152</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0162</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>anna.stefanowiczd@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+<source>
+<LI_Source/>
+</source>
+</LI_ProcessStep>
+</processStep>
+<processStep>
+<LI_ProcessStep>
+<description>
+<gco:CharacterString>2016 boundary updates and additions were incorporated into the file by the North Carolina Wildlife Resources Commission from various sources: existing parcel boundaries, coincidence with features (DOT roads layer, 1:24000 hydrology layer), or by on the ground GPS surveys.</gco:CharacterString>
+</description>
+<dateTime>
+<gco:DateTime>2016-09-07T00:00:00</gco:DateTime>
+</dateTime>
+<processor>
+<CI_ResponsibleParty>
+<individualName>
+<gco:CharacterString>Anna Stefanowicz</gco:CharacterString>
+</individualName>
+<organisationName>
+<gco:CharacterString>NC Wildlife Resources Commission</gco:CharacterString>
+</organisationName>
+<contactInfo>
+<CI_Contact>
+<phone>
+<CI_Telephone>
+<voice>
+<gco:CharacterString>919.707.0152</gco:CharacterString>
+</voice>
+<facsimile>
+<gco:CharacterString>919.707.0162</gco:CharacterString>
+</facsimile>
+</CI_Telephone>
+</phone>
+<address>
+<CI_Address>
+<deliveryPoint>
+<gco:CharacterString>1751 Varsity Drive</gco:CharacterString>
+</deliveryPoint>
+<city>
+<gco:CharacterString>Raleigh</gco:CharacterString>
+</city>
+<administrativeArea>
+<gco:CharacterString>NC</gco:CharacterString>
+</administrativeArea>
+<postalCode>
+<gco:CharacterString>27606</gco:CharacterString>
+</postalCode>
+<country>
+<Country codeList="http://www.iso.org/iso/country_codes/iso_3166_code_lists.htm" codeListValue="US" codeSpace="ISO3166-1">US</Country>
+</country>
+<electronicMailAddress>
+<gco:CharacterString>anna.stefanowiczd@ncwildlife.org</gco:CharacterString>
+</electronicMailAddress>
+</CI_Address>
+</address>
+</CI_Contact>
+</contactInfo>
+<role>
+<CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="processor" codeSpace="ISOTC211/19115">processor</CI_RoleCode>
+</role>
+</CI_ResponsibleParty>
+</processor>
+<source>
+<LI_Source/>
+</source>
+</LI_ProcessStep>
+</processStep>
+<source>
+<LI_Source>
+<description>
+<gco:CharacterString>(Paper) maps used to delineate the publicly owned Game Lands in North Carolina.</gco:CharacterString>
+</description>
+<scaleDenominator>
+<MD_RepresentativeFraction>
+<denominator>
+<gco:Integer>100000</gco:Integer>
+</denominator>
+</MD_RepresentativeFraction>
+</scaleDenominator>
+<sourceCitation>
+<CI_Citation>
+<title>
+<gco:CharacterString>USGS 30X60 Minute series quadrangles</gco:CharacterString>
+</title>
+<date gco:nilReason="missing"/>
+</CI_Citation>
+</sourceCitation>
+<sourceExtent>
+<EX_Extent>
+<description>
+<gco:CharacterString>Publication dates of quadrangles</gco:CharacterString>
+</description>
+<temporalElement>
+<EX_TemporalExtent>
+<extent>
+<gml:TimePeriod gml:id="N66894">
+<gml:beginPosition>1938-01-01</gml:beginPosition>
+<gml:endPosition>1990-01-01</gml:endPosition>
+</gml:TimePeriod>
+</extent>
+</EX_TemporalExtent>
+</temporalElement>
+</EX_Extent>
+</sourceExtent>
+</LI_Source>
+</source>
+<source>
+<LI_Source>
+<description>
+<gco:CharacterString>Locations of publicly owned Game Lands in North Carolina</gco:CharacterString>
+</description>
+<scaleDenominator>
+<MD_RepresentativeFraction>
+<denominator>
+<gco:Integer>100</gco:Integer>
+</denominator>
+</MD_RepresentativeFraction>
+</scaleDenominator>
+<sourceCitation>
+<CI_Citation>
+<title>
+<gco:CharacterString>Hunting and Fishing Maps for North Carolina Game Lands</gco:CharacterString>
+</title>
+<date>
+<CI_Date>
+<date>
+<gco:Date>1989-01-01</gco:Date>
+</date>
+<dateType>
+<CI_DateTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_DateTypeCode" codeListValue="publication" codeSpace="ISOTC211/19115">publication</CI_DateTypeCode>
+</dateType>
+</CI_Date>
+</date>
+</CI_Citation>
+</sourceCitation>
+<sourceExtent>
+<EX_Extent>
+<description>
+<gco:CharacterString>Original source map dates</gco:CharacterString>
+</description>
+<temporalElement>
+<EX_TemporalExtent>
+<extent>
+<gml:TimePeriod gml:id="N66942">
+<gml:beginPosition>1989-01-01</gml:beginPosition>
+<gml:endPosition>1990-01-01</gml:endPosition>
+</gml:TimePeriod>
+</extent>
+</EX_TemporalExtent>
+</temporalElement>
+</EX_Extent>
+</sourceExtent>
+</LI_Source>
+</source>
+</LI_Lineage>
+</lineage>
+</DQ_DataQuality>
+</dataQualityInfo>
+<metadataConstraints>
+<MD_Constraints>
+<useLimitation>
+<gco:CharacterString>This metadata file is to accompany the data set identified and received from NC Wildlife Resources Commission (NCWRC). NCWRC does not support secondary distribution. If this data file was received from anyone besides NCWRC, this metadata file and the data set it describes may contain discrepancies.</gco:CharacterString>
+</useLimitation>
+</MD_Constraints>
+</metadataConstraints>
+</MD_Metadata>

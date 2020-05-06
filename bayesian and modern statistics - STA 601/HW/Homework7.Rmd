@@ -1,0 +1,229 @@
+---
+title: 'STA 601/360 Homework7'
+author: "Jae Hyun Lee, jl914"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, message=F, warning=F, echo=F}
+library(tidyverse)
+library(foreign)
+library(truncnorm)
+library(knitr)
+require(magrittr)
+require(plyr)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(fig.align = 'center')
+```
+
+# HW7 for STA-601
+
+## Exercise 1
+
+#### a)
+
+$$
+\begin{aligned}
+&P(Y \mid \theta, \Sigma) = (2\pi)^{-np/2} \mid\Sigma\mid^{-n/2}exp\{\frac{1}{2}\sum_{i=1}^n (y_i - \theta)^T\Sigma^{-1}(y_i-\theta)\} \\
+\rightarrow &P(Y\mid\theta,\Psi) = (2\pi)^{-np/2} \mid\Psi\mid^{n/2}exp\{\frac{1}{2}\sum_{i=1}^n (y_i - \theta)^T\Psi(y_i-\theta)\} \\
+\end{aligned}
+$$
+Thus
+$$
+\begin{aligned}
+l(\theta, \Psi \mid Y) &= -\frac{np}{2}log2\pi + \frac{n}{2}log\mid\Psi\mid - \frac{1}{2}\sum_{i=1}^n (y_i - \theta)^T\Psi(y_i-\theta) \\
+&= -\frac{np}{2}log2\pi + \frac{n}{2}log\mid\Psi\mid - \frac{1}{2}\sum_{i=1}^n (y_i - \bar{y} + \bar{y} -\theta)^T\Psi(y_i- \bar{y} + \bar{y} -\theta) \\
+&= -\frac{np}{2}log2\pi + \frac{2}{n}log\mid\Psi\mid - \frac{1}{2}\sum_{i=1}^n (y_i - \bar{y})^T\Psi(y_i - \bar{y}) - \frac{1}{2}\sum_{i=1}^n (y_i - \bar{y})^T\Psi(\bar{y} - \theta) - \frac{1}{2}\sum_{i=1}^n (\bar{y} - \theta)^T\Psi(y_i - \bar{y}) - \frac{1}{2}\sum_{i=1}^n (\bar{y} - \theta)^T\Psi(\bar{y} - \theta) \\
+&= -\frac{np}{2}log2\pi + \frac{2}{n}log\mid\Psi\mid -\frac{1}{2}tr(A_1\Psi) -\frac{1}{2}tr(A_2\Psi) -\frac{1}{2}tr(A_3\Psi) - \frac{1}{2}\sum_{i=1}^n (\bar{y} - \theta)^T\Psi(\bar{y} - \theta) \\
+&where \quad A_1 = \sum_{i=1}^n (y_i - \bar{y})(y_i - \bar{y})^T = ns, \; A_2 = \sum_{i=1}^n (\bar{y} - \theta)(y_i - \bar{y})^T \; for \sum_{i=1}^n (y_i - \bar{y}) = 0, \; A_3 = \sum_{i=1}^n (y_i - \bar{y})(\bar{y} - \theta)^T = 0 \\
+&= -\frac{np}{2}log2\pi + \frac{2}{n}log\mid\Psi\mid -\frac{n}{2}tr(S\Psi)  - \frac{1}{2}\sum_{i=1}^n (\bar{y} - \theta)^T\Psi(\bar{y} - \theta)
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+&logp(\theta, \Psi) = \frac{l(\theta,\Psi \mid Y)}{n} + c = -\frac{np}{2}log2\pi + \frac{2}{n}log\mid\Psi\mid -\frac{n}{2}tr(S\Psi)  - \frac{1}{2}\sum_{i=1}^n (\bar{y} - \theta)^T\Psi(\bar{y} - \theta) + c \\
+\rightarrow & P(\theta, \Psi) = \underbrace{(2\pi)^{-p/2} \mid\Psi\mid^{1/2} exp\{-\frac{1}{2}(\bar{y}-\theta)^T\Psi(\bar{y}-\theta)\}}_{kernal\; of \;normal} \times \underbrace{\mid\Psi\mid^{\frac{p+1-p-1}{2}}exp\{-\frac{1}{2}tr((S^{-1})^{-1})\Psi\}}_{kernal \; of\; wishart} \\
+\rightarrow &P(\Psi) \sim wishart(p+1, S^{-1}), \; and \; P(\theta \mid \Psi) \sim N_p(\bar{y},\Psi^{-1})
+\end{aligned}
+$$
+
+#### b)
+
+$$
+\begin{aligned}
+&Since \; \Psi \sim wishart(p+1, S^{-1}), \; \Sigma \sim inverse-wishart(p+1, S) \\
+&P(\Sigma) \propto \mid\Sigma\mid^{-(p+1)} exp\{-\frac{1}{2}tr(S\Sigma^{-1}) \} \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+P(\theta, \Sigma \mid y_1 \cdot\cdot\cdot y_n) &\propto P(\theta \mid \Sigma)P(\Sigma)p(y_1 \cdot\cdot\cdot y_n\mid\theta,\Sigma) \\
+&= \mid\Sigma\mid^{-1/2}exp\{-\frac{1}{2}(\theta - \bar{y})^T\Sigma^{-1}(\theta-\bar{y}) \} \mid\Sigma\mid^{-(p+1)}exp\{-\frac{1}{2}tr(S\Sigma^{-1})\} \\
+&\times \mid \Sigma \mid^{-n/2}exp\{-\frac{n}{2}tr(S\Sigma^{-1}) \}exp\{-\frac{n}{2} (\bar{y} - \theta)^T\Sigma^{-1}(\bar{y} - \theta)\} \\
+&= \mid \Sigma \mid ^{-\frac{1}{2}(n+1+2p+2)} exp\{-\frac{1}{2}tr(nS+S)\Sigma^{-1} \}exp\{-\frac{1}{2}[(\theta-\bar{y})^T\Sigma^{-1}(\theta - \bar{y}) + n(\bar{y} - \theta)^T \Sigma^{-1} (\bar{y} - \theta)] \} \\ 
+&= P(\theta \mid \Sigma, y_1 \cdot\cdot\cdot y_n) \times P(\Sigma \mid y_1 \cdot\cdot\cdot y_n) \\
+\end{aligned}
+$$
+where $P(\theta \mid \Sigma, y_1 \cdot\cdot\cdot y_n) \sim N(\bar{y}, \Sigma/(n+1))$ and $P(\Sigma \mid y_1 \cdot\cdot\cdot y_n) \sim inverse-wishart(n+p+1, S^{-1}/(n+1))$
+
+$P(\theta, \Sigma \mid y_1 \cdot\cdot\cdot y_n)$ is mathematically proper posterior distribution. However, since the prior depends on data, it is not real prior we have which is independent from data. Thus posterior totally depends on data and it is not the real posterior we want to get that combine prior information with data. Thus $P(\theta, \Sigma \mid y_1 \cdot\cdot\cdot y_n)$ is not adequate posterior distribution.
+
+## Exercise 2
+
+```{r}
+agehw <- read.table("http://www2.stat.duke.edu/~pdh10/FCBS/Exercises/agehw.dat",
+                    header = T)
+```
+
+#### a)
+
+In my opinion, mean age of marriage for husband may be 30 with standard deviation 5. On the other hand, mean age of marriage for wife would be 27 with standard deviation 4. Since, they are very closely related I assume that correlation between them is 0.8
+
+```{r}
+prior <- list(mu = c(30,27),
+              lambda = matrix(c(5^2,0.8*5*4,0.8*5*4,4^2), byrow = T, ncol = 2),
+              S0 = matrix(c(5^2,0.8*5*4,0.8*5*4,4^2), byrow = T, ncol = 2),
+              nu = 4)
+```
+
+#### b)
+
+```{r}
+set.seed(1000)
+
+theta <- matrix(rep(NA,8), ncol = 2)
+sigma <- array(rep(NA,16), dim = c(2, 2, 4))
+data <- array(rep(NA,100*2*4), dim = c(100, 2, 4))
+
+for(i in 1:4){
+  theta[i,] <- MASS::mvrnorm(1, mu = prior$mu, Sigma = prior$lambda)
+  sigma[,,i] <- solve(matrix(rWishart(1, df = prior$nu, Sigma = solve(prior$S0)),ncol = 2))
+  data[,,i] <- MASS::mvrnorm(100, mu = theta[i,], Sigma = sigma[,,i])
+  
+  print(ggplot(mapping = aes(x = data[,1,i], y = data[,2,i])) +
+    geom_point() +
+    labs(title = "scatter plot of age husband vs wife", x = "husband", y = "wife"))
+}
+```
+
+Every 4 plots shows strong positive relationship as I expected. Moreover, except for 4th plot, plots are showing that average age for husband is 30 and for wife is 27. Thus I think I can conclude that they represent my prior belief.
+
+#### c)
+
+```{r}
+gibbs <- function(size, prior, data){
+  #prior setup
+  n <- nrow(data); p <- ncol(data)
+  ybar <- apply(data, 2, mean)
+  mu <- prior$mu; lambda <- prior$lambda
+  nu <- prior$nu; S0 <- prior$S0
+  #first obs
+  theta <- matrix(0,ncol = p, nrow = size)
+  sigma <- array(1,dim = c(p,p,size)) ; sigma[,,1] <- diag(1,p)
+  #browser()
+  for(i in 2:size){
+    #update mean
+    lambda_n <- solve(n*solve(sigma[,,i-1]) + solve(lambda))
+    mu_n <- lambda_n %*% (n*solve(sigma[,,i-1])%*%ybar + solve(lambda)%*%mu)
+    theta[i,] <- MASS::mvrnorm(1, mu = mu_n, Sigma = lambda_n)
+    
+    #update variance
+    nu_n <- prior$nu + n
+    Sn <- S0 + (t(data) - theta[i,]) %*% as.matrix(data - theta[i,])
+    sigma[,,i] <- solve(rWishart(1, nu_n, solve(Sn))[,,1])
+  }
+  result <- list(theta = theta,
+                 sigma = sigma)
+  return(result)
+}
+posterior <- gibbs(5000, prior = prior, data = agehw)
+
+ggplot(mapping = aes(x = posterior$theta[,1], y = posterior$theta[,2])) +
+  geom_point() +
+  xlim(20,50) + ylim(20,50) +
+  labs(title = "Posterior distribution of husband's and wife's age", x = "husband", y = "wife")
+
+ggplot(mapping = aes(x = posterior$sigma[1,2,]/sqrt(posterior$sigma[1,1,] * posterior$sigma[2,2,]) )) +
+  geom_histogram(col = "red", fill = "skyblue") +
+  labs(title = "Marginal distribution of correlation between husband's and wife's age", x = "correlation")
+
+CI <- function(data, lower= 0.025, upper = 0.975){
+  result <- c(quantile(data, lower), quantile(data,upper))
+  names(result) <- c("2.5%","97.5%")
+  return(result)
+}
+confidence <- rbind(CI(posterior$theta[,1]), CI(posterior$theta[,2]), CI(posterior$sigma[1,2,]/sqrt(posterior$sigma[1,1,]*posterior$sigma[2,2,])))
+rownames(confidence) <- c("husband", "wife", "correlation")
+kable(confidence)
+```
+
+#### d)
+
+```{r}
+prior.2 <- list(mu = c(0,0),
+                lambda = diag(10^5,2),
+                S0 = diag(1000,2),
+                nu = 3)
+posterior2 <- gibbs(10000, prior.2, data = agehw)
+
+confidence2 <- rbind(CI(posterior2$theta[,1]), CI(posterior2$theta[,2]), CI(posterior2$sigma[1,2,]/sqrt(posterior2$sigma[1,1,]*posterior2$sigma[2,2,])))
+rownames(confidence2) <- c("husband", "wife", "correlation")
+kable(confidence2)
+```
+
+#### e)
+
+```{r}
+kable(cbind(confidence, confidence2 ))
+```
+
+
+
+For every confidence interval, posterior intervals based on my prior information have narrower intervals. However, after investigate data, prior information about average age of marriage for both husband and wife assumes much lower age than actual data. As a result, estimation based on my information for average age is lower than diffuse prior. On the other hand, I think prior information about correlation was proper. Thus for average age for husband and wife, diffuse prior is preferable whereas for correlation, my prior information is preferable. If sample size was small, distortion for average age which caused by my prior information becomes much severe. But for correlation, we can still have precise estimation. 
+
+## Exercise 3
+prove if $Y = (Y_a, Y_b) \sim N(\theta, \Sigma) \; where \; \theta = (\theta_a, \theta_b), \; \Sigma = \begin{bmatrix} \Sigma_{aa} & \Sigma_{ab} \\ \Sigma_{ba} & \Sigma_{bb}\end{bmatrix}$ is multivariate normal, 
+Then $Y_b \mid Y_a \sim N(\theta_b + \Sigma_{ba} \Sigma_{aa}^{-1}(y_a - \theta_a), \Sigma_{bb} - \Sigma_{ba}\Sigma_{aa}^{-1}\Sigma_{ab})$
+
+PF) Let $W = Y_b - XY_a \; so \; that\; W \; and \; Y_a \; are \; independent$, Then
+$$
+\begin{aligned}
+\begin{bmatrix} Y_a \\ W\end{bmatrix} = \begin{bmatrix} I_{p_a} & 0 \\ -X & I_{p_b} \end{bmatrix} \begin{bmatrix} Y_a \\ Y_b\end{bmatrix}
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+Var(\begin{bmatrix} Y_a \\ W \end{bmatrix})& = \begin{bmatrix} I_{p_a} & 0 \\ -X & I_{p_b}\end{bmatrix} \begin{bmatrix} \Sigma_{aa} & \Sigma_{ab} \\ \Sigma_{ba} & \Sigma_{bb} \end{bmatrix} \begin{bmatrix} I_{p_a} & - X^T \\ 0 & I_{p_b}  \end{bmatrix} \\
+&= \begin{bmatrix} \Sigma_{aa} & \Sigma_{ab} \\ -X\Sigma_{aa}+\Sigma_{ba} & -X\Sigma_{ab} + \Sigma_{bb}\end{bmatrix} \begin{bmatrix} I_{p_a} & -X^T \\ 0 & I_{p_b}\end{bmatrix} \\ 
+&= \begin{bmatrix} \Sigma_{aa} & -\Sigma_{aa}X^T + \Sigma_{ab} \\ -X\Sigma_{aa} + \Sigma{ba} & X\Sigma_{aa}X^T -\Sigma_{ba}X^T - X\Sigma_{ab} + \Sigma_{bb} \end{bmatrix}
+\end{aligned}
+$$
+Since $\Sigma$ is positive definite matrix and symmetric $\rightarrow \Sigma_{ab}^T = \Sigma_{ba}$ and $X = \Sigma_{ab} \Sigma_{aa}^{-1}$ and $X^T = \Sigma_{aa}^{-1}\Sigma_{ba}$ so that 
+
+$$
+\begin{aligned}
+Var(\begin{bmatrix} Y_a \\ W \end{bmatrix}) &= \begin{bmatrix} \Sigma_{aa} & 0 \\ 0 & \Sigma_{ab} \Sigma_{aa}^{-1}\Sigma_{ba} - \Sigma_{ba}\Sigma_{aa}^{-1}\Sigma_{ab} - \Sigma_{ab}\Sigma_{aa}^{-1}\Sigma_{ba} + \Sigma_{bb}\end{bmatrix} \\ 
+&= \begin{bmatrix} \Sigma_{aa} & 0 \\ 0 & \Sigma_{bb} - \Sigma_{ba}\Sigma_{aa}^{-1}\Sigma_{ab}\end{bmatrix}
+\end{aligned}
+$$
+Since, covariance of $W, Y_a = 0$, they are independent. Thus 
+
+$$
+\begin{aligned}
+&W \mid Y_A = W \sim N_p(\theta_b - \Sigma_{ab}\Sigma_{aa}^{-1}\theta_a, \Sigma_{bb} - \Sigma{ba}\Sigma_{aa}^{-1}\Sigma_{ab}) \\
+&Y_b = W + \Sigma_{ab}\Sigma_{aa}^{-1}Y_a \\
+Thus \; &Y_b \mid Y_a \sim N_{p_a}(\theta_b + \Sigma_{ab}\Sigma_{aa}^{-1}(Y_a - \theta_a), \Sigma_{bb} - \Sigma_{ba}\Sigma_{aa}^{-1}\Sigma_{ab})
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+
+\end{aligned}
+$$

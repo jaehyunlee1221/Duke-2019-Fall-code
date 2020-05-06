@@ -1,0 +1,137 @@
+---
+title: "Homework 6"
+author: '[Group member names]'
+date: "11/05/2019"
+output: 
+  html_document:
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+                      warning = FALSE)
+```
+
+```{r}
+library(rvest)
+library(tidyverse)
+library(tidyr)
+library(jsonlite)
+library(nnet)
+library(data.table)
+library(foreach)
+library(doMC)
+library(tree)
+#install.packages("doMC", repos = "http://R-Forge.R-project.org")
+```
+
+
+
+```{r}
+bike <- readRDS("cbs2017.Rds")
+test <- readRDS("test.Rds")
+weather <- readRDS("data/darksky.rds")
+weather2 <- readRDS("data/darksky2.rds")
+```
+
+
+```{r}
+test.org <- test
+test <- test %>% 
+  separate(col = `start_date`, into = paste("Start",c("year","month","day"), sep = "_")) %>% 
+  mutate(duration = cut(duration, breaks = seq(0,max(bike$Duration),100))) %>% 
+  as.data.table()
+cbs_2017 <- bike %>% 
+  separate(col = `Start date`, into = paste("Start",c("year","month","day"), sep = "_")) %>% 
+  mutate(Duration = cut(Duration, breaks = seq(0,max(Duration),100)))
+weather <- weather %>% 
+  select(time, temperatureHigh, humidity, windSpeed) %>% 
+  separate(col = time, into = c("year","month","day")) %>% 
+  mutate(temperatureHigh = cut(temperatureHigh, breaks = seq(20,max(temperatureHigh),10))) %>% 
+  mutate(humidity = cut(humidity, breaks = seq(0.25,max(humidity),0.25)))
+weather2 <- weather2 %>% 
+  select(time, temperatureHigh, humidity, windSpeed) %>% 
+  separate(col = time, into = c("year","month","day")) %>% 
+  mutate(temperatureHigh = cut(temperatureHigh, breaks = seq(20,max(temperatureHigh),10))) %>% 
+  mutate(humidity = cut(humidity, breaks = seq(0.25,max(humidity),0.25)))
+
+
+full_data <- left_join(cbs_2017, weather, by = c("Start_year" = "year","Start_month" = "month","Start_day" = "day"))
+full_test <- left_join(test, weather2, by = c("Start_year" = "year","Start_month" = "month","Start_day" = "day"))
+
+month <- formatC(1:12, width = 2, flag = "0")
+
+bike2017 <- lapply(month, function(x){full_data %>% filter(Start_month == x)})
+
+station <- data.frame(station = colnames(test)[8:495], stringsAsFactors = F)
+
+summary(full_data)
+
+test2 <- full_test[,c(5,7,498,499)]
+test3 <- lapply(split(test2, seq(nrow(test2))),as.list)
+
+pred <- function(data, bike, station){
+  library(tidyverse)
+  
+  end_station <- function(mydata,start,duration,temperatureHigh,humidity){
+    temp <- mydata %>% 
+      filter(`Start station` == start & Duration == duration, temperatureHigh == temperatureHigh,
+             humidity == humidity) %>% 
+      group_by(`End station`) %>% 
+      summarise(count = n())
+  return(temp)
+  }
+  
+  temp <- lapply(bike, end_station, data$start_station, data$duration, data$temperatureHigh, data$humidity)
+  temp2 <- bind_rows(temp) %>% 
+    group_by(`End station`) %>% 
+    summarise_all(sum) %>%
+    mutate(count = count/sum(count))
+  
+  temp3 <- left_join(station, temp2, by = c("station" = "End station")) %>% 
+    arrange(station)
+
+  temp3[is.na(temp3$count),2] <- 0
+  temp4 <- t(temp3)
+  colnames(temp4) <- temp4[1,]
+  temp5 <- temp4[2,,drop = F]
+  return(temp5)
+}
+
+library(parallel)
+cores <- detectCores()
+data.clust <- makeCluster(cores)
+system.time(test4 <- parLapply(data.clust, test3, pred, bike = bike2017, station = station))
+stopCluster(data.clust)
+
+test5 <- round(t(bind_rows(lapply(test4,as.numeric))),digit = 8) 
+colnames(test5) <- station$station
+final <- cbind(test.org[,1:7],test5)
+final$start_date <- format(final$start_date,"%Y-%m-%dT%H:%M:%SZ") 
+final$end_date <- format(final$end_date,"%Y-%m-%dT%H:%M:%SZ")
+write.csv(final, "cbs_[byte-me].csv")
+write.csv(test.org, "cbs_test.csv")
+```
+
+```{r}
+library(nnet)
+cbs_2017 <- bike %>% 
+  separate(col = `Start date`, into = paste("Start",c("year","month","day"), sep = "_"))
+weather <- weather %>% 
+  select(time, temperatureHigh, humidity, windSpeed) %>% 
+  separate(col = time, into = c("year","month","day"))
+full_data <- left_join(cbs_2017, weather, by = c("Start_year" = "year","Start_month" = "month","Start_day" = "day"))
+
+newbike <- lapply(unique(bike$`Start station`), function(x){full_data %>% filter(`Start station` == x)})
+a <- newbike[[2]]
+multinom.a <- multinom(`End station` ~ Duration + temperatureHigh + humidity + windSpeed, data = a, MaxNWts = 10000, maxit = 10)
+result <- cbind(multinom.a$fitted.values,multinom.a$lev)
+
+end_station <- function(mydata,start){
+    temp <- mydata %>% 
+      filter(`Start station` == start) %>% 
+      group_by(`End station`) %>% 
+      summarise(count = n())
+  return(temp)
+  }
+```
